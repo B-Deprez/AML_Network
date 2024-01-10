@@ -2,22 +2,21 @@ import torch
 from torch_geometric.data import Data
 import networkx as nx
 import networkit as nk
+import numpy as np
+import pandas as pd
 
 
-class network_AML(df_features, df_edges, directed = False):
-    def __init__(self):
+class network_AML():
+    def __init__(self, df_features, df_edges, directed = False):
         self.df_features = df_features
         self.df_edges = df_edges
+        self.directed = directed
         
-        self.nodes, self.edges, self.map_id = set_up_network_info()
+        self.nodes, self.edges, self.map_id = self._set_up_network_info()
         
-        self.network_nx = construct_network_nx()
-        self.network_nk = construct_network_nk()
-        self.network_torch = construct_network_torch()
-        
-    def set_up_network_info(self):
+    def _set_up_network_info(self):
         nodes = self.df_features['txId']
-        map_id = {j:i for i,j in enumerate(self.nodes)} #add map to have uniform mapping over the three networks
+        map_id = {j:i for i,j in enumerate(nodes)} #add map to have uniform mapping over the three networks
         if self.directed:
             edges = self.df_edges[['txId1', 'txId2']] 
         else:
@@ -26,14 +25,14 @@ class network_AML(df_features, df_edges, directed = False):
             edges_rev.columns = ['txId1', 'txId2']
             edges = pd.concat([edges_direct, edges_rev])
             
-        edges.txId1 = edges.txId1.map(self.map_id)
-        edges.txId2 = edges.txId2.map(self.map_id)
+        edges.txId1 = edges.txId1.map(map_id)
+        edges.txId2 = edges.txId2.map(map_id)
         
         edges = edges.astype(int)
         
         return(nodes, edges, map_id)
         
-    def construct_network_nx(self):
+    def get_network_nx(self):
         edges_zipped = zip(self.edges['txId1'], self.edges['txId2'])
         
         if self.directed:
@@ -41,11 +40,12 @@ class network_AML(df_features, df_edges, directed = False):
         else: 
             G_nx = nx.Graph()
         
-        G_nx.add_nodes_from(edges_zipped)
+        G_nx.add_nodes_from(self.nodes)
+        G_nx.add_edges_from(edges_zipped)
         
         return(G_nx)    
             
-    def construct_network_nk(self):
+    def get_network_nk(self):
         edges_zipped = zip(self.edges['txId1'], self.edges['txId2'])
         
         G_nk = nk.Graph(len(self.nodes), directed = self.directed)
@@ -55,7 +55,7 @@ class network_AML(df_features, df_edges, directed = False):
             
         return(G_nk)
         
-    def construct_network_torch(self):
+    def get_network_torch(self):
         labels = self.df_features['class']
         features = self.df_features[self.df_features.columns.drop(['txId', 'class'])]
         
@@ -72,3 +72,5 @@ class network_AML(df_features, df_edges, directed = False):
         data = Data(x=x, edge_index=edge_index)
         
         return(data)
+    
+    

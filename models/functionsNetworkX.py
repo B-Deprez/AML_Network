@@ -89,4 +89,4 @@ def local_features_nx(G_nx, fraud_dict):
             RNC_NF_node
         ]
         
-        return(feature_dict)
+    return(feature_dict)
