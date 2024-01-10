@@ -4,12 +4,12 @@ import pandas as pd
 def assign_att(u, att, val):
     att[u] = val
 
-def betweenness_nk(G_nk, path):
+def betweenness_nk(G_nk):
     psp_list = []
     G_nk.forNodes(lambda u: psp_list.append(u))
     
     print("Calculating betweenness...")
-    betweenness_full = nk.centrality.Betweenness(G_nk)
+    betweenness_full = nk.centrality.Betweenness(G_nk, normalized=True)
     betweenness_full.run()
     print("Done")
     
@@ -21,9 +21,9 @@ def betweenness_nk(G_nk, path):
     
     betweenness_df = pd.DataFrame({"PSP":psp_list, "Betweenness":betweenness_list})
     
-    betweenness_df.to_csv(path)
+    return(betweenness_df)
     
-def closeness_nk(G_nk, path):
+def closeness_nk(G_nk):
     psp_list = []
     G_nk.forNodes(lambda u: psp_list.append(u))
     
@@ -40,4 +40,4 @@ def closeness_nk(G_nk, path):
     
     closeness_df = pd.DataFrame({"PSP":psp_list, "Closeness":closeness_list})
     
-    closeness_df.to_csv(path)
+    return(closeness_df)
