@@ -11,6 +11,12 @@ class network_AML():
         self.df_features = df_features
         self.df_edges = df_edges
         self.directed = directed
+        self.fraud_dict = dict(
+            zip(
+                df_features["txId"],
+                df_features["class"]
+                )
+            )
         
         self.nodes, self.edges, self.map_id = self._set_up_network_info()
         
@@ -73,4 +79,6 @@ class network_AML():
         
         return(data)
     
+    def get_fraud_dict(self):
+        return(self.fraud_dict)
     
