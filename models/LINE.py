@@ -37,3 +37,44 @@ class LINE(nn.Module): # Need to look at how node2vec does this. Delayed untill 
 
     def reset_parameters(self):
         self.embedding.reset_parameters()
+        
+    def neg_sample(self, batch: Tensor) -> Tensor:
+        batch = batch.repeat(self.walks_per_node * self.num_negative_samples)
+
+        rw = torch.randint(self.num_nodes, (batch.size(0), self.walk_length),
+                           dtype=batch.dtype, device=batch.device)
+        rw = torch.cat([batch.view(-1, 1), rw], dim=-1)
+
+        walks = []
+        num_walks_per_rw = 1 + self.walk_length + 1 - self.context_size
+        for j in range(num_walks_per_rw):
+            walks.append(rw[:, j:j + self.context_size])
+        return torch.cat(walks, dim=0)
+    
+    def forward(self, batch: Optional[Tensor] = None) -> Tensor:
+        emb = self.embedding.weight
+        return emb if batch is None else emb[batch]
+    
+    @torch.jit.export
+    def neg_sample(self, batch: Tensor) -> Tensor:
+        batch = batch.repeat(self.walks_per_node)
+
+        ns = torch.randint(self.num_nodes, (batch.size(0), 1),
+                           dtype=batch.dtype, device=batch.device)
+        ns = torch.cat([batch.view(-1, 1), ns], dim=-1) #concatenates the tensors
+        return(ns)
+    
+    @torch.jit.export
+    def pos_sample(self, batch: Tensor) -> Tensor:
+        batch_neigh = []
+        for v in batch:
+            batch_neigh.append(neighbourhood(v, data))
+        ps =torch.cat(batch_neigh)
+        return ps
+    
+    def neighbourhood_samples(self, v):
+        data = self.data
+        edges_connected_to_node = torch.where(data.edge_index[0] == target_node)[0]
+        connected_nodes = data.edge_index[1, edges_connected_to_node]
+        target_node_dup = torch.tensor(target_node).repeat(len(connected_nodes))
+        return(torch.cat([target_node_dup.view(-1,1), connected_nodes.view(-1,1)], dim = -1))
