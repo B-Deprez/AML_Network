@@ -1,4 +1,5 @@
 import torch
+import torch.nn as nn
 from torch_geometric.data import Data
 from torch_geometric.nn import Node2Vec
 
@@ -52,3 +53,4 @@ def node2vec_representation(G_torch,
         loss = train()
         acc = test()
         print(f'Epoch: {epoch:03d}, Loss: {loss:.4f}, Acc: {acc:.4f}')
+        
