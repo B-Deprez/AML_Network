@@ -10,7 +10,7 @@ from torch_geometric.typing import WITH_PYG_LIB, WITH_TORCH_CLUSTER
 from torch_geometric.utils import sort_edge_index
 from torch_geometric.utils.num_nodes import maybe_num_nodes
 
-class LINE(nn.Module): # Need to look at how node2vec does this. Delayed untill after deep learning methods
+class LINE(nn.Module):
     def __init__(
         self,
         edge_index: Tensor,
@@ -20,6 +20,8 @@ class LINE(nn.Module): # Need to look at how node2vec does this. Delayed untill 
         num_nodes: Optional[int] = None,
         sparse: bool = False,
     ):
+        super().__init__()
+        
         self.num_nodes = maybe_num_nodes(edge_index, num_nodes)
         
         self.row, self.col = sort_edge_index(edge_index, num_nodes=self.num_nodes).cpu()
@@ -41,6 +43,10 @@ class LINE(nn.Module): # Need to look at how node2vec does this. Delayed untill 
         emb = self.embedding.weight
         return emb if batch is None else emb[batch]
     
+    def loader(self, **kwargs) -> DataLoader:
+            return DataLoader(range(self.num_nodes), collate_fn=self.sample,
+                            **kwargs)
+
     @torch.jit.export
     def neg_sample(self, batch: Tensor) -> Tensor:
         batch = batch.repeat(self.walks_per_node)
@@ -52,12 +58,11 @@ class LINE(nn.Module): # Need to look at how node2vec does this. Delayed untill 
     
     @torch.jit.export
     def pos_sample(self, batch: Tensor) -> Tensor:
-        if self.order ==2:
-            batch_neigh = []
-            for v in batch:
-                batch_neigh.append(self.neighbourhood_samples(v))
-            ps = torch.cat(batch_neigh)
-            return ps
+        batch_neigh = []
+        for v in batch:
+            batch_neigh.append(self.neighbourhood_samples(v))
+        ps = torch.cat(batch_neigh)
+        return ps
     
     @torch.jit.export
     def neighbourhood_samples(self, target_node) -> Tensor:
