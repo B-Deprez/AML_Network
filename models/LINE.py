@@ -12,7 +12,7 @@ from torch_geometric.utils.num_nodes import maybe_num_nodes
 
 class LINE_w1(nn.Module):
     """
-    Implementation of the LINE (Large-scale Information Network Embedding) model with order 1.
+    Implementation of the LINE (Large-scale Information Network Embedding) model with only degree-1 nodes.
 
     Args:
         edge_index (Tensor): The edge indices of the graph.
