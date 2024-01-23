@@ -184,3 +184,61 @@ class LINE_w1(nn.Module):
             neg_loss = -torch.log(1 - torch.sigmoid(out) + self.EPS).mean()
 
         return pos_loss + neg_loss
+    
+    class LINE(nn.Module):
+        def __init__(
+                self,  
+                edge_index: Tensor,
+                embedding_dim: int,
+                num_negative_samples: int = 1,
+                order: int = 2,
+                num_nodes: Optional[int] = None,
+                sparse: bool = False,
+                ):
+            super().__init__()
+            self.num_nodes = maybe_num_nodes(edge_index, num_nodes)
+
+            self.row, self.col = sort_edge_index(edge_index, num_nodes=self.num_nodes).cpu()
+
+            self.EPS = 1e-15
+
+            self.embedding_dim = embedding_dim
+            self.num_negative_samples = num_negative_samples
+
+            self.embedding = Embedding(self.num_nodes, embedding_dim, sparse=sparse)
+
+            self.reset_parameters()
+
+        def reset_parameters(self):
+            """
+            Reset the parameters of the model.
+            """
+            self.embedding.reset_parameters()
+
+        def forward(self, batch: Optional[Tensor] = None) -> Tensor:
+            """
+            Compute the node embeddings.
+
+            Args:
+                batch (Optional[Tensor], optional): The batch of nodes for which to compute the embeddings. If None, compute embeddings for all nodes. Defaults to None.
+
+            Returns:
+                Tensor: The node embeddings.
+            """
+            emb = self.embedding.weight
+            return emb if batch is None else emb[batch]
+        
+        """ Need for special dataloader to iterate over edges of the graph """
+        # Specify dataset, and add __getitem__
+        # __getitem__ should return a tuple of (source, target) edges
+
+        """ Need for special function to generate positive samples """
+        # Via alias table sampling
+        # This function should be a data loader
+
+        """ Need for special function to generate negative samples """
+        # Via distribution of node degrees 
+        # Use power 2/3 of the degree
+        # This function should be a data loader
+
+        """ Need for special function to compute loss """
