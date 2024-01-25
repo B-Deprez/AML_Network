@@ -1,6 +1,6 @@
 import torch
 import torch.nn as nn
-import torch.Functional as F
+import torch.functional as F
 from torch_geometric.nn import GraphConv, GCNConv, GATv2Conv, SAGEConv, GINConv
 
 # Look at having hidden_dim and only embedding_dim in final layer
