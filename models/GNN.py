@@ -3,6 +3,8 @@ import torch.nn as nn
 import torch.Functional as F
 from torch_geometric.nn import GraphConv, GCNConv, GATv2Conv, SAGEConv, GINConv
 
+# Look at having hidden_dim and only embedding_dim in final layer
+
 class GCN(nn.Module):
     def __init__(self, num_features, embedding_dim, output_dim, n_layers, dropout_rate):
         super().__init__()
@@ -22,7 +24,6 @@ class GCN(nn.Module):
             h = F.relu(h)
             h = self.dropout(h)
         h = self.gcn2(h, edge_index, edge_weight=edge_features)
-        h = F.relu(h)
 
         return h
 
@@ -53,7 +54,7 @@ class GraphSAGE(nn.Module): #Neighbourhood sampling only in training step (via D
             h = F.relu(h)
             h = self.dropout(h)
         h = self.sage2(h, edge_index)
-        h = F.relu(h)
+        
         return h
 
 
@@ -77,7 +78,7 @@ class GAT(nn.Module):
             h = self.dropout(h)
         
         h = self.gat2(h, edge_index, edge_weight=edge_features)
-        h = F.relu(h)
+        
         return h
 
 class GIN(nn.Module):
