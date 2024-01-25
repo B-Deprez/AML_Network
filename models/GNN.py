@@ -6,14 +6,15 @@ from torch_geometric.nn import GraphConv, GCNConv, GATv2Conv, SAGEConv, GINConv
 # Look at having hidden_dim and only embedding_dim in final layer
 
 class GCN(nn.Module):
-    def __init__(self, num_features, embedding_dim, output_dim, n_layers, dropout_rate):
+    def __init__(self, num_features, hidden_dim, embedding_dim, output_dim, n_layers, dropout_rate):
         super().__init__()
+        self.output_dim = output_dim
         self.dropout = nn.Dropout(dropout_rate)
-        self.gcn1 = GCNConv(num_features, embedding_dim)
+        self.gcn1 = GCNConv(num_features, hidden_dim)
         self.gcn_hidden = nn.ModuleList()
         for _ in range(n_layers-2): #first and last layer seperately
-            self.gcn_hidden.append(GCNConv(embedding_dim, embedding_dim))
-        self.gcn2 = GCNConv(embedding_dim, output_dim)
+            self.gcn_hidden.append(GCNConv(hidden_dim, hidden_dim))
+        self.gcn2 = GCNConv(hidden_dim, embedding_dim)
 
     def forward(self, x, edge_index, edge_features=None):
         h = self.gcn1(x, edge_index, edge_weight=edge_features)
@@ -28,22 +29,18 @@ class GCN(nn.Module):
         return h
 
 class GraphSAGE(nn.Module): #Neighbourhood sampling only in training step (via DataLoader)
-    def __init__(self, num_features, embedding_dim, output_dim, n_layers, dropout_rate, sage_aggr='mean'):
+    def __init__(self, num_features, hidden_dim, embedding_dim, output_dim, n_layers, dropout_rate, sage_aggr='mean'):
         super.__init__()
-        self.dropout = nn.Dropout(dropout_rate)
-        self.sage_aggr = sage_aggr
-        self.num_features = num_features
-        self.embedding_dim = embedding_dim
         self.output_dim = output_dim
-        self.n_layers = n_layers
+        self.dropout = nn.Dropout(dropout_rate)
 
-        self.sage1 = SAGEConv(self.num_features, self.embedding_dim, aggr=self.sage_aggr)
+        self.sage1 = SAGEConv(num_features, hidden_dim, aggr=sage_aggr)
         self.sage_hidden = nn.ModuleList()
 
         for _ in range(n_layers-2):
-            self.sage_hidden.append(SAGEConv(self.embedding_dim, self.embedding_dim, aggr=self.sage_aggr))
+            self.sage_hidden.append(SAGEConv(hidden_dim, hidden_dim, aggr=sage_aggr))
         
-        self.sage2 = SAGEConv(self.embedding_dim, self.output_dim, aggr=self.sage_aggr)
+        self.sage2 = SAGEConv(hidden_dim, embedding_dim, aggr=sage_aggr)
         
     def forward(self, x, edge_index):
         h = self.sage1(x, edge_index)
@@ -59,14 +56,15 @@ class GraphSAGE(nn.Module): #Neighbourhood sampling only in training step (via D
 
 
 class GAT(nn.Module):
-    def __init__(self, num_features, embedding_dim, output_dim, heads, n_layers, dropout_rate):
+    def __init__(self, num_features, hidden_dim, embedding_dim, output_dim, heads, n_layers, dropout_rate):
         super().__init__()
+        self.output_dim = output_dim
         self.dropout = nn.Dropout(dropout_rate)
-        self.gat1 = GATv2Conv(num_features, embedding_dim, heads=heads)
+        self.gat1 = GATv2Conv(num_features, hidden_dim, heads=heads)
         self.gat_hidden = nn.ModuleList()
         for _ in range(n_layers-2):
-            self.gcn_hidden.append(GATv2Conv(heads*embedding_dim, embedding_dim, heads=heads))
-        self.gat2 = GATv2Conv(heads*embedding_dim, output_dim, heads=heads, concat=False)
+            self.gat_hidden.append(GATv2Conv(heads*hidden_dim, hidden_dim, heads=heads))
+        self.gat2 = GATv2Conv(heads*hidden_dim, embedding_dim, heads=heads, concat=False)
 
     def forward(self, x, edge_index, edge_features=None):
         h = self.gat1(x, edge_index, edge_weight=edge_features)
@@ -82,8 +80,9 @@ class GAT(nn.Module):
         return h
 
 class GIN(nn.Module):
-    def __init__(self):
+    def __init__(self, num_features, hidden_dim, embedding_dim, output_dim, n_layers, dropout_rate):
         super().__init__()
+        self.output_dim = output_dim
         self.dropout = nn.Dropout(dropout_rate)
     
     def forward(self, x, edge_index, edge_features=None):
