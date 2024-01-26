@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 import torch.functional as F
-from torch_geometric.nn import GraphConv, GCNConv, GATv2Conv, SAGEConv, GINConv
+from torch_geometric.nn import GraphConv, GCNConv, GATv2Conv, SAGEConv, GINConv, GINEConv
 
 # Look at having hidden_dim and only embedding_dim in final layer
 
@@ -84,9 +84,93 @@ class GIN(nn.Module):
         super().__init__()
         self.output_dim = output_dim
         self.dropout = nn.Dropout(dropout_rate)
+
+        self.gin1 = GINConv(
+            nn.Sequential(
+                nn.Linear(num_features, hidden_dim), 
+                nn.BatchNorm1d(hidden_dim),
+                nn.ReLU(),
+                nn.Linear(hidden_dim, hidden_dim),
+                nn.ReLU()
+                ))
+        
+        self.gin_hidden = nn.ModuleList()
+        for _ in range(n_layers-2):
+            self.gin_hidden.append(GINConv(
+                nn.Sequential(
+                    nn.Linear(hidden_dim, hidden_dim), 
+                    nn.BatchNorm1d(hidden_dim),
+                    nn.ReLU(),
+                    nn.Linear(hidden_dim, hidden_dim),
+                    nn.ReLU()
+                    )))
+        
+        self.gin2 = GINConv(
+            nn.Sequential(
+                nn.Linear(hidden_dim, hidden_dim), 
+                nn.BatchNorm1d(hidden_dim),
+                nn.ReLU(),
+                nn.Linear(hidden_dim, embedding_dim)
+                ))
+
     
-    def forward(self, x, edge_index, edge_features=None):
-        pass
+    def forward(self, x, edge_index):
+        h = self.gin1(x, edge_index)
+
+        for layer in self.gin_hidden:
+            h = layer(h, edge_index)
+
+        h = self.gin2(h, edge_index)
+
+        return h
+
+
+class GINE(nn.Module):
+    def __init__(self, num_features, edge_dim, hidden_dim, embedding_dim, output_dim, n_layers, dropout_rate):
+        super().__init__()
+        self.output_dim = output_dim
+        self.dropout = nn.Dropout(dropout_rate)
+
+        self.gine1 = GINEConv(
+            nn.Sequential(
+                nn.Linear(num_features, hidden_dim), 
+                nn.BatchNorm1d(hidden_dim),
+                nn.ReLU(),
+                nn.Linear(hidden_dim, hidden_dim),
+                nn.ReLU()
+                ),
+                edge_dim=edge_dim)
+        
+        self.gine_hidden = nn.ModuleList()
+        for _ in range(n_layers-2):
+            self.gine_hidden.append(GINEConv(
+                nn.Sequential(
+                    nn.Linear(hidden_dim, hidden_dim), 
+                    nn.BatchNorm1d(hidden_dim),
+                    nn.ReLU(),
+                    nn.Linear(hidden_dim, hidden_dim),
+                    nn.ReLU()
+                    ),
+                    edge_dim=edge_dim))
+            
+        self.gine2 = GINEConv(
+            nn.Sequential(
+                nn.Linear(hidden_dim, hidden_dim), 
+                nn.BatchNorm1d(hidden_dim),
+                nn.ReLU(),
+                nn.Linear(hidden_dim, embedding_dim)
+                ),
+                edge_dim=edge_dim)
+        
+    def forward(self, x, edge_index, edge_features):
+        h = self.gine1(x, edge_index, edge_features)
+
+        for layer in self.gine_hidden:
+            h = layer(h, edge_index, edge_features)
+
+        h = self.gine2(h, edge_index, edge_features)
+
+        return h
 
 # class GNN(nn.Module):
 #     def __init__(self, num_features, num_classes, num_hidden_layers, hidden, dropout, model):
