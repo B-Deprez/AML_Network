@@ -2,6 +2,7 @@ import torch
 import torch.nn as nn
 from torch_geometric.data import Data
 from torch_geometric.nn import Node2Vec
+from models.LINE import LINE_w1
 
 def node2vec_representation(G_torch, 
                             embedding_dim=128,walk_length=20,context_size=10,walks_per_node=10,num_negative_samples=1,p=1.0,q=1.0, #node2vec hyper-parameters
@@ -55,4 +56,36 @@ def node2vec_representation(G_torch,
         print(f'Epoch: {epoch:03d}, Loss: {loss:.4f}, Acc: {acc:.4f}')
 
     return model
-        
+
+def LINE_representation(G_torch,
+                        embedding_dim=128, num_negative_samples=1, #LINE hyper-parameters
+                        batch_size=128, lr=0.01, max_iter=150, epochs=100): #learning hyper-parameters
+    device = 'cuda' if torch.cuda.is_available() else 'cpu'
+
+    model = LINE_w1(
+        G_torch.edge_index,
+        embedding_dim=embedding_dim,
+        num_negative_samples=num_negative_samples,
+        sparse=True,
+    ).to(device)
+    
+    loader = model.loader(batch_size=128, shuffle=True, num_workers=0)
+    optimizer = torch.optim.SparseAdam(list(model.parameters()), lr=lr)
+
+    def train():
+        model.train()
+        total_loss = 0
+        for pos_rw, neg_rw in loader:
+            optimizer.zero_grad()
+            loss = model.loss(pos_rw.to(device), neg_rw.to(device))
+            loss.backward()
+            optimizer.step()
+            total_loss += loss.item()
+        return total_loss / len(loader)
+    
+    for epoch in range(epochs):
+        loss = train()
+        acc = 0 
+        print(f'Epoch: {epoch:03d}, Loss: {loss:.4f}, Acc: {acc:.4f}')
+
+    return model

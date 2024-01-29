@@ -40,6 +40,7 @@ class LINE_w1(nn.Module):
 
         self.EPS = 1e-15
 
+        self.order = order
         self.embedding_dim = embedding_dim
         self.num_negative_samples = num_negative_samples
 
