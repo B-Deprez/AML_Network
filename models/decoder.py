@@ -4,6 +4,7 @@ import torch.nn.functional as F
 class Decoder(nn.Module):
     def __init__(self, embedding_dim, output_size=2, hidden_size=128):
         super().__init__()
+        self.embedding = embedding
         self.layer1 = nn.Linear(embedding_dim, hidden_size)
         self.layer2 = nn.Linear(hidden_size, output_size)
 
