@@ -1,4 +1,5 @@
 import networkx as nx
+import pandas as pd
 
 def local_features_nx(G_nx, fraud_dict):
     feature_dict = dict() #dictionary to save all values
@@ -88,5 +89,7 @@ def local_features_nx(G_nx, fraud_dict):
             RNC_F_node, 
             RNC_NF_node
         ]
+
+    features_df = pd.DataFrame(feature_dict, index=["fraud_degree", "legit_degree", "fraud_triangle", "semifraud_triangle", "legit_triangle", "density", "RNC_F_node", "RNC_NF_node"]).T
         
-    return(feature_dict)
+    return(features_df)

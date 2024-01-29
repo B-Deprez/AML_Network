@@ -11,14 +11,15 @@ class network_AML():
         self.df_features = df_features
         self.df_edges = df_edges
         self.directed = directed
+        
+        self.nodes, self.edges, self.map_id = self._set_up_network_info()
+
         self.fraud_dict = dict(
             zip(
-                df_features["txId"],
+                df_features["txId"].map(self.map_id),
                 df_features["class"]
                 )
             )
-        
-        self.nodes, self.edges, self.map_id = self._set_up_network_info()
         
     def _set_up_network_info(self):
         nodes = self.df_features['txId']
@@ -30,7 +31,8 @@ class network_AML():
             edges_rev = edges_direct[['txId2', 'txId1']]
             edges_rev.columns = ['txId1', 'txId2']
             edges = pd.concat([edges_direct, edges_rev])
-            
+        
+        nodes = nodes.map(map_id)
         edges.txId1 = edges.txId1.map(map_id)
         edges.txId2 = edges.txId2.map(map_id)
         

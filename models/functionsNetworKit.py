@@ -60,3 +60,12 @@ def eigenvector_nk(G_nk):
     eigen_df = pd.DataFrame({"PSP":psp_list, "Eigenvector":eigen_list})
     
     return(eigen_df)
+
+def features_nk(G_nk):
+    betweenness = betweenness_nk(G_nk)
+    closeness = closeness_nk(G_nk)
+    eigenvector = eigenvector_nk(G_nk)
+
+    features_df = betweenness.merge(closeness, on = "PSP").merge(eigenvector, on = "PSP")
+
+    return(features_df)
