@@ -61,7 +61,7 @@ class GraphSAGE(nn.Module): #Neighbourhood sampling only in training step (via D
             dropout_rate: float = 0, 
             sage_aggr: str='mean'
             ):
-        super.__init__()
+        super().__init__()
         self.edge_index = edge_index
         self.output_dim = output_dim
         self.dropout = nn.Dropout(dropout_rate)
