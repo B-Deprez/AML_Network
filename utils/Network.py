@@ -68,6 +68,9 @@ class network_AML():
         features = self.df_features[self.df_features.columns.drop(['txId', 'class'])]
         
         x = torch.tensor(np.array(features.values, dtype=np.double), dtype=torch.double)
+        if x.size()[1] == 0:
+            x = torch.ones(x.size()[0], 1)
+        y = torch.tensor(np.array(labels.values, dtype=np.int64), dtype=torch.int64)
         
         # Reformat and convert to tensor
         edge_index = np.array(self.edges.values).T 
@@ -77,7 +80,7 @@ class network_AML():
         weights = torch.tensor([1]* edge_index.shape[1] , dtype=torch.double) 
         
         # Create pyG dataset
-        data = Data(x=x, edge_index=edge_index)
+        data = Data(x=x, y=y, edge_index=edge_index)
         
         return(data)
     

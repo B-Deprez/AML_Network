@@ -4,9 +4,9 @@ from torch_geometric.data import Data
 from torch_geometric.nn import Node2Vec
 from models.LINE import LINE_w1
 
-def node2vec_representation(G_torch, 
-                            embedding_dim=128,walk_length=20,context_size=10,walks_per_node=10,num_negative_samples=1,p=1.0,q=1.0, #node2vec hyper-parameters
-                            batch_size=128, lr=0.01, max_iter=150, epochs=100): #learning hyper-parameters
+def node2vec_representation(G_torch: Data, 
+                            embedding_dim: int = 128,walk_length: int =20,context_size: int =10,walks_per_node: int =10,num_negative_samples: int =1,p: float =1.0,q: float =1.0, #node2vec hyper-parameters
+                            batch_size: int =128, lr: float =0.01, max_iter: int =150, epochs: int =100): #learning hyper-parameters
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
     
     model = Node2Vec(
@@ -57,9 +57,9 @@ def node2vec_representation(G_torch,
 
     return model
 
-def LINE_representation(G_torch,
-                        embedding_dim=128, num_negative_samples=1, #LINE hyper-parameters
-                        batch_size=128, lr=0.01, max_iter=150, epochs=100): #learning hyper-parameters
+def LINE_representation(G_torch: Data,
+                        embedding_dim:int= 128, num_negative_samples: int=1, #LINE hyper-parameters
+                        batch_size:int =128, lr:float =0.01, max_iter:int =150, epochs: int=100): #learning hyper-parameters
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
     model = LINE_w1(
