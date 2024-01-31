@@ -35,16 +35,16 @@ class GCN(nn.Module):
 
         self.out = Decoder_linear(embedding_dim, output_dim)
 
-    def forward(self, x, edge_features=None):
-        h = self.gcn1(x, self.edge_index, edge_weight=edge_features)
+    def forward(self, x, edge_index, edge_features=None):
+        h = self.gcn1(x, edge_index, edge_weight=edge_features)
         h = F.relu(h)
         h = self.dropout(h)
         if self.n_layers > 1:
             for layer in self.gcn_hidden:
-                h = layer(h, self.edge_index, edge_weight=edge_features)
+                h = layer(h, edge_index, edge_weight=edge_features)
                 h = F.relu(h)
                 h = self.dropout(h)
-            h = self.gcn2(h, self.edge_index, edge_weight=edge_features)
+            h = self.gcn2(h, edge_index, edge_weight=edge_features)
         out = self.out(h)
 
         return out, h
@@ -79,16 +79,16 @@ class GraphSAGE(nn.Module): #Neighbourhood sampling only in training step (via D
 
         self.out = Decoder_linear(embedding_dim, output_dim)
         
-    def forward(self, x):
-        h = self.sage1(x, self.edge_index)
+    def forward(self, x, edge_index):
+        h = self.sage1(x, edge_index)
         h = F.relu(h)
         h = self.dropout(h)
         if self.n_layers > 1:
             for layer in self.sage_hidden:
-                h = layer(h, self.edge_index)
+                h = layer(h, edge_index)
                 h = F.relu(h)
                 h = self.dropout(h)
-            h = self.sage2(h, self.edge_index)
+            h = self.sage2(h, edge_index)
         out = self.out(h)
         
         return out, h
