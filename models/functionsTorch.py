@@ -1,6 +1,8 @@
+from typing import List, Optional, Tuple, Union
 import torch
 import torch.nn as nn
 from torch_geometric.data import Data
+from torch_geometric.loader import DataLoader, NeighborLoader
 from torch_geometric.nn import Node2Vec
 from models.LINE import LINE_w1
 
@@ -89,3 +91,52 @@ def LINE_representation(G_torch: Data,
         print(f'Epoch: {epoch:03d}, Loss: {loss:.4f}, Acc: {acc:.4f}')
 
     return model
+
+def train_GraphSAGE(
+        data: Data,
+        sizes: List[int],
+        model: nn.Module,
+        lr: float = 0.02, 
+        batch_size:int =1, 
+        epochs: int=100
+        ):
+    loader = NeighborLoader(data.edge_index, sizes=sizes, batch_size=batch_size, num_workers=0)
+    device = 'cuda' if torch.cuda.is_available() else 'cpu'
+    model.to(device, "x", "y")
+    model.train()
+    optimizer = torch.optim.SGD(model.parameters(), lr=lr)
+    criterion = nn.CrossEntropyLoss()
+
+    for epoch in range(epochs):
+        for batch in loader:
+            optimizer.zero_grad()
+            out, h = model(batch.x, batch.edge_index.to(device))
+            y_hat = out[:batch.batch_size]
+            y = batch.y[:batch.batch_size]
+            loss = criterion(y_hat, y)
+            loss.backward()
+            optimizer.step()
+
+def train_GNN(
+        data: Data,
+        model: nn.Module,
+        lr: float = 0.02, 
+        batch_size:int =1, 
+        epochs: int=100
+        ):
+    loader = DataLoader(data, batch_size=batch_size, shuffle=True)
+    device = 'cuda' if torch.cuda.is_available() else 'cpu'
+    model.train()
+    total_loss = 0
+    optimizer = torch.optim.SGD(model.parameters(), lr=lr)
+    criterion = nn.CrossEntropyLoss()
+
+    for epoch in range(epochs):
+        for batch in loader:
+            optimizer.zero_grad()
+            out, h = model(batch.x, batch.edge_index.to(device))
+            y_hat = out[:batch.batch_size]
+            y = batch.y[:batch.batch_size]
+            loss = criterion(y_hat, y)
+            loss.backward()
+            optimizer.step()
