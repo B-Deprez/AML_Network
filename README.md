@@ -13,5 +13,5 @@ The project repo has the following structure:
 | |-LINE.py
 |-utils
 | |-Network.py
-| |-train.py
+|-train.py
 ```
