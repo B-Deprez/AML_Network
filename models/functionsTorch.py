@@ -120,14 +120,23 @@ def train_GraphSAGE(
 def train_GNN(
         data: Data,
         model: nn.Module,
+        loader: DataLoader = None,
         lr: float = 0.02, 
         batch_size:int =1, 
         epochs: int=100
         ):
-    loader = DataLoader(data, batch_size=batch_size, shuffle=True)
+
+    if loader is None:
+        try:
+            loader = NeighborLoader(data, num_neighbors= [-1]*model.n_layers,input_nodes=data.train_mask, batch_size=batch_size, shuffle=False, num_workers=0) #Import all neighbours if there is train_mask
+        except:
+            loader = NeighborLoader(data, num_neighbors= [-1]*model.n_layers, batch_size=batch_size, shuffle=False, num_workers=0) #Import all neighbours if no train_mask
+
+    else:
+        loader = loader #User-specified loader. Intetended mainly for GraphSAGE.
+
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
     model.train()
-    total_loss = 0
     optimizer = torch.optim.SGD(model.parameters(), lr=lr)
     criterion = nn.CrossEntropyLoss()
 
@@ -140,3 +149,4 @@ def train_GNN(
             loss = criterion(y_hat, y)
             loss.backward()
             optimizer.step()
+            print(loss)
