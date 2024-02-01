@@ -229,6 +229,8 @@ class LINE(nn.Module):
         emb = self.embedding.weight
         return emb if batch is None else emb[batch]
     
+    # Inlcude edge loader
+    
     """ Need for special dataloader to iterate over edges of the graph """
     # Specify dataset, and add __getitem__
     # __getitem__ should return a tuple of (source, target) edges
