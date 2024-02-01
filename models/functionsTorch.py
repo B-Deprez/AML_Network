@@ -54,7 +54,7 @@ def node2vec_representation(G_torch: Data,
     
     for epoch in range(epochs):
         loss = train()
-        acc = 0 #test()
+        acc = test()
         print(f'Epoch: {epoch:03d}, Loss: {loss:.4f}, Acc: {acc:.4f}')
 
     return model
@@ -97,8 +97,7 @@ def train_GraphSAGE(
         sizes: List[int],
         model: nn.Module,
         lr: float = 0.02, 
-        batch_size:int =1, 
-        epochs: int=100
+        batch_size:int =1
         ):
     loader = NeighborLoader(data.edge_index, sizes=sizes, batch_size=batch_size, num_workers=0)
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
@@ -107,23 +106,21 @@ def train_GraphSAGE(
     optimizer = torch.optim.SGD(model.parameters(), lr=lr)
     criterion = nn.CrossEntropyLoss()
 
-    for epoch in range(epochs):
-        for batch in loader:
-            optimizer.zero_grad()
-            out, h = model(batch.x, batch.edge_index.to(device))
-            y_hat = out[:batch.batch_size]
-            y = batch.y[:batch.batch_size]
-            loss = criterion(y_hat, y)
-            loss.backward()
-            optimizer.step()
+    for batch in loader:
+        optimizer.zero_grad()
+        out, h = model(batch.x, batch.edge_index.to(device))
+        y_hat = out[:batch.batch_size]
+        y = batch.y[:batch.batch_size]
+        loss = criterion(y_hat, y)
+        loss.backward()
+        optimizer.step()
 
 def train_GNN(
         data: Data,
         model: nn.Module,
         loader: DataLoader = None,
         lr: float = 0.02, 
-        batch_size:int =1, 
-        epochs: int=100
+        batch_size:int =1
         ):
 
     if loader is None:
@@ -140,13 +137,24 @@ def train_GNN(
     optimizer = torch.optim.SGD(model.parameters(), lr=lr)
     criterion = nn.CrossEntropyLoss()
 
-    for epoch in range(epochs):
-        for batch in loader:
-            optimizer.zero_grad()
-            out, h = model(batch.x, batch.edge_index.to(device))
-            y_hat = out[:batch.batch_size]
-            y = batch.y[:batch.batch_size]
-            loss = criterion(y_hat, y)
-            loss.backward()
-            optimizer.step()
-            print(loss)
+    for batch in loader:
+        optimizer.zero_grad()
+        out, h = model(batch.x, batch.edge_index.to(device))
+        y_hat = out[:batch.batch_size]
+        y = batch.y[:batch.batch_size]
+        loss = criterion(y_hat, y)
+        loss.backward()
+        optimizer.step()
+        return(loss)
+
+def test_GNN(
+        data: Data, 
+        model: nn.Module,
+):
+    model.eval()
+    criterion = nn.CrossEntropyLoss()
+    out, h = model(data.x, data.edge_index)
+    y_hat = out[data.test_mask]
+    y = data.y[data.test_mask]
+    loss = criterion(y_hat, y)
+    return(loss)
