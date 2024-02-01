@@ -9,9 +9,11 @@ The project repo has the following structure:
 | |-functionsNetworKit.py
 | |-functionsNetworkX.py
 | |-functionsTorch.py
+| |-decoder.py
 | |-GNN.py
 | |-LINE.py
 |-utils
 | |-Network.py
+| |-DatasetConstruction.py
 |-train.py
 ```
