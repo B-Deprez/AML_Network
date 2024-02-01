@@ -101,8 +101,8 @@ class GAT(nn.Module):
             hidden_dim: int, 
             embedding_dim: int, 
             output_dim: int, 
-            heads: int, 
             n_layers: int, 
+            heads: int = 1, 
             dropout_rate: float = 0
             ):
         super().__init__()
@@ -122,16 +122,16 @@ class GAT(nn.Module):
         self.out = Decoder_linear(embedding_dim)
 
     def forward(self, x, edge_index, edge_features=None):
-        h = self.gat1(x, edge_index, edge_weight=edge_features)
+        h = self.gat1(x, edge_index, edge_attr=edge_features)
         h = F.relu(h)
         h = self.dropout(h)
         if self.n_layers > 1:
             for layer in self.gat_hidden:
-                h = layer(h, edge_index, edge_weight=edge_features)
+                h = layer(h, edge_index, edge_attr=edge_features)
                 h = F.relu(h)
                 h = self.dropout(h)
             
-            h = self.gat2(h, edge_index, edge_weight=edge_features)
+            h = self.gat2(h, edge_index, edge_attr=edge_features)
         out = self.out(h)
         
         return out, h
@@ -149,6 +149,7 @@ class GIN(nn.Module):
         super().__init__()
         self.output_dim = output_dim
         self.dropout = nn.Dropout(dropout_rate)
+        self.n_layers = n_layers
 
         if n_layers == 1:
             self.gin1 = GINConv(
