@@ -7,7 +7,7 @@ import pandas as pd
 
 
 class network_AML():
-    def __init__(self, df_features, df_edges, directed = False):
+    def __init__(self, df_features, df_edges, directed = False, train_mask = None, val_mask = None, test_mask = None, fraud_dict = None):
         self.df_features = df_features
         self.df_edges = df_edges
         self.directed = directed
@@ -20,6 +20,10 @@ class network_AML():
                 df_features["class"]
                 )
             )
+        
+        self.train_mask = train_mask
+        self.val_mask = val_mask
+        self.test_mask = test_mask
         
     def _set_up_network_info(self):
         nodes = self.df_features['txId']
@@ -81,6 +85,13 @@ class network_AML():
         
         # Create pyG dataset
         data = Data(x=x, y=y, edge_index=edge_index)
+
+        if self.train_mask is not None:
+            data.train_mask = torch.tensor(self.train_mask, dtype=torch.bool)
+        if self.val_mask is not None:
+            data.val_mask = torch.tensor(self.val_mask, dtype=torch.bool)
+        if self.test_mask is not None:
+            data.test_mask = torch.tensor(self.test_mask, dtype=torch.bool)
         
         return(data)
     
