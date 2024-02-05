@@ -35,16 +35,16 @@ class GCN(nn.Module):
 
         self.out = Decoder_linear(embedding_dim, output_dim)
 
-    def forward(self, x, edge_index, edge_features=None):
-        h = self.gcn1(x, edge_index, edge_weight=edge_features)
+    def forward(self, x, edge_index):
+        h = self.gcn1(x, edge_index)
         h = F.relu(h)
         h = self.dropout(h)
         if self.n_layers > 1:
             for layer in self.gcn_hidden:
-                h = layer(h, edge_index, edge_weight=edge_features)
+                h = layer(h, edge_index)
                 h = F.relu(h)
                 h = self.dropout(h)
-            h = self.gcn2(h, edge_index, edge_weight=edge_features)
+            h = self.gcn2(h, edge_index)
         out = self.out(h)
 
         return out, h
