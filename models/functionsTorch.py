@@ -114,6 +114,7 @@ def train_GraphSAGE(
         loss = criterion(y_hat, y)
         loss.backward()
         optimizer.step()
+    return(loss)
 
 def train_GNN(
         data: Data,
@@ -122,7 +123,6 @@ def train_GNN(
         lr: float = 0.02, 
         batch_size:int =1
         ):
-
     if loader is None:
         try:
             loader = NeighborLoader(data, num_neighbors= [-1]*model.n_layers,input_nodes=data.train_mask, batch_size=batch_size, shuffle=False, num_workers=0) #Import all neighbours if there is train_mask
@@ -145,7 +145,7 @@ def train_GNN(
         loss = criterion(y_hat, y)
         loss.backward()
         optimizer.step()
-        return(loss)
+    return(loss)
 
 def test_GNN(
         data: Data, 
