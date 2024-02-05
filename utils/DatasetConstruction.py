@@ -17,7 +17,7 @@ def load_elliptic():
     columns = {0: 'txId', 1: 'time_step'}
     feat_df = feat_df.rename(columns=columns)
 
-    x = torch.from_numpy(feat_df.loc[:, :].values).to(torch.float)
+    x = torch.from_numpy(feat_df.loc[:, 'time step':].values).to(torch.float)
 
     # There exists 3 different classes in the dataset:
     # 0=licit,  1=illicit, 2=unknown
