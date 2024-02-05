@@ -125,9 +125,9 @@ def train_GNN(
         ):
     if loader is None:
         try:
-            loader = NeighborLoader(data, num_neighbors= [-1]*model.n_layers,input_nodes=data.train_mask, batch_size=batch_size, shuffle=False, num_workers=0) #Import all neighbours if there is train_mask
+            loader = NeighborLoader(data, num_neighbors= [-1]*model.n_layers,input_nodes=data.train_mask, batch_size=batch_size, shuffle=True, num_workers=0) #Import all neighbours if there is train_mask
         except:
-            loader = NeighborLoader(data, num_neighbors= [-1]*model.n_layers, batch_size=batch_size, shuffle=False, num_workers=0) #Import all neighbours if no train_mask
+            loader = NeighborLoader(data, num_neighbors= [-1]*model.n_layers, batch_size=batch_size, shuffle=True, num_workers=0) #Import all neighbours if no train_mask
 
     else:
         loader = loader #User-specified loader. Intetended mainly for GraphSAGE.
