@@ -132,7 +132,7 @@ def train_GNN(
     else:
         loader = loader #User-specified loader. Intetended mainly for GraphSAGE.
 
-    device = 'cuda' if torch.cuda.is_available() else 'cpu'
+    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     model.train()
     optimizer = torch.optim.SGD(model.parameters(), lr=lr)
     criterion = nn.CrossEntropyLoss()
@@ -151,9 +151,10 @@ def test_GNN(
         data: Data, 
         model: nn.Module,
 ):
+    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     model.eval()
     criterion = nn.CrossEntropyLoss()
-    out, h = model(data.x, data.edge_index)
+    out, h = model(data.x, data.edge_index.to(device))
     y_hat = out[data.test_mask]
     y = data.y[data.test_mask]
     loss = criterion(y_hat, y)
