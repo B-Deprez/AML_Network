@@ -41,16 +41,5 @@ def train_GNN(data):
     optimizer.step()
     return loss
 
-
 if __name__ == "__main__":
-    num_workers = 0
-    num_epochs = 10
-    device = 'cuda' if torch.cuda.is_available() else 'cpu'
-    model = 0
-    loader = model.loader(batch_size=128, shuffle=True, num_workers=num_workers)
-    criterion = nn.CrossEntropyLoss()
-    optimizer = optim.SGD(model.parameters(), lr=0.01)
-
-    for epoch in range(num_epochs):
-        loss = train_node2vec()
-        print(f'Epoch: {epoch:03d}, Loss: {loss:.4f}')
+    
