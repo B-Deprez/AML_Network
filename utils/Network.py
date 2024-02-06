@@ -98,3 +98,6 @@ class network_AML():
     def get_fraud_dict(self):
         return(self.fraud_dict)
     
+    def get_masks(self):
+        return(self.train_mask, self.val_mask, self.test_mask)
+    
