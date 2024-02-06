@@ -12,21 +12,62 @@ from models.LINE import *
 from utils.Network import *
 from utils.DatasetConstruction import *
 
+from models.decoder import *
+
 if __name__ == "__main__":
     ### Load Elliptic Dataset ###
     ntw = load_elliptic()
 
-    ### Train networkx ###
+    ### Train positional features ###
+    ## Train networkx 
     print("networkx: ")
     ntw_nx = ntw.get_network_nx()
     fraud_dict = ntw.get_fraud_dict()
     fraud_dict = {k: 0 if v == 2 else v for k, v in fraud_dict.items()}
     features_nx_df = local_features_nx(ntw_nx, fraud_dict)
 
-    ### Train NetworkKit ###
+    ## Train NetworkKit
     print("networkit: ")
     ntw_nk = ntw.get_network_nk()
     features_nk_df = features_nk(ntw_nk)
+
+    ## Concatenate features
+    features_df = pd.concat([features_nx_df, features_nk_df], axis=1)
+    features_based_on_labels = ["fraud_degree", "legit_degree", "fraud_triangle", "semifraud_triangle", "legit_triangle", "RNC_F_node", "RNC_NF_node"]
+    features_df = features_df.drop(features_based_on_labels, axis=1)[["PSP", "density", "Betweenness", "Closeness", "Eigenvector"]]
+    features_df["fraud"] = [fraud_dict[x] for x in features_df.index]
+
+    device = (
+        "cuda"
+        if torch.cuda.is_available()
+        else "mps"
+        if torch.backends.mps.is_available()
+        else "cpu"
+    )
+
+    x = torch.tensor(features_df.drop(["PSP","fraud"], axis=1).values, dtype=torch.float32).to(device)
+    y = torch.tensor(features_df["fraud"].values, dtype=torch.long).to(device)
+
+    model = Decoder_deep_norm(x.shape[1], 2, 5).to(device)
+
+    n_epochs = 100
+    optimizer = torch.optim.Adam(model.parameters(), lr=1e-3)
+    criterion = nn.CrossEntropyLoss()
+
+    for epoch in range(n_epochs):
+        model.train()
+        optimizer.zero_grad()
+        output = model(x)
+        loss = criterion(output, y)
+        loss.backward()
+        optimizer.step()
+        print(f"Epoch {epoch+1}: Loss: {loss.item()}")
+
+    ## Train decoder
+    print("decoder: ")
+    features_based_on_labels = ["fraud_degree", "legit_degree", "fraud_triangle", "semifraud_triangle", "legit_triangle", "RNC_F_node", "RNC_NF_node"]
+    features_df = features_df.drop(features_based_on_labels, axis=1)
+    features_df = features_df.drop(["PSP"], axis=1)
     
     ### Train Torch ###
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
@@ -160,3 +201,5 @@ if __name__ == "__main__":
         loss_train = train_GNN(ntw_torch, model_gin, batch_size=batch_size, lr=lr)
         loss_test = test_GNN(ntw_torch, model_gin)
         print(f'Epoch: {epoch+1:03d}, Loss Train: {loss_train:.4f}, Loss Test: {loss_test:.4f}')
+
+    
