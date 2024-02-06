@@ -45,8 +45,8 @@ if __name__ == "__main__":
     features_nx_df = local_features_nx(ntw_nx, fraud_dict)
 
     ### Train NetworkKit ###
-    ntw_nk = ntw.get_network_nk()
-    features_nk_df = features_nk(ntw_nk)
+    #ntw_nk = ntw.get_network_nk()
+    #features_nk_df = features_nk(ntw_nk)
     
     ### Train PyTorch ###
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
@@ -61,11 +61,13 @@ if __name__ == "__main__":
     output_dim = 2
     n_layers = 3
     dropout_rate = 0
-    head = 8
+    batch_size=128
+    lr = 0.02
 
-    n_epochs = 20
+    n_epochs = 5
 
     # GCN
+    print("GCN: ")
     model_gcn = GCN(
         edge_index=edge_index, 
         num_features=num_features,
@@ -77,6 +79,71 @@ if __name__ == "__main__":
         ).to(device)
     
     for epoch in range(n_epochs):
-        loss_train = train_GNN(ntw_torch, model_gcn, batch_size=128)
+        loss_train = train_GNN(ntw_torch, model_gcn, batch_size=batch_size, lr=lr)
         loss_test = test_GNN(ntw_torch, model_gcn)
+        print(f'Epoch: {epoch+1:03d}, Loss Train: {loss_train:.4f}, Loss Test: {loss_test:.4f}')
+
+    # GraphSAGE
+    print("GraphSAGE: ")
+    num_neighbors = [2]*n_layers
+    sage_aggr = 'mean'
+
+    model_sage = GraphSAGE(
+        edge_index=edge_index, 
+        num_features=num_features,
+        hidden_dim=hidden_dim,
+        embedding_dim=embedding_dim,
+        output_dim=output_dim,
+        n_layers=n_layers,
+        dropout_rate=dropout_rate,
+        sage_aggr=sage_aggr
+        ).to(device)
+    
+    loader = NeighborLoader(
+        ntw_torch, 
+        num_neighbors = num_neighbors,
+        input_nodes = ntw_torch.train_mask,
+        batch_size = batch_size,
+        shuffle = True,
+        num_workers = 0
+        )
+    
+    for epoch in range(n_epochs):
+        loss_train = train_GNN(ntw_torch, model_sage, loader=loader, lr=lr)
+        loss_test = test_GNN(ntw_torch, model_sage)
+        print(f'Epoch: {epoch+1:03d}, Loss Train: {loss_train:.4f}, Loss Test: {loss_test:.4f}')
+
+    # GAT
+    print("GAT: ")
+    heads = 6
+
+    model_gat = GAT(
+        num_features=num_features,
+        hidden_dim=hidden_dim,
+        embedding_dim=embedding_dim,
+        output_dim=output_dim,
+        n_layers=n_layers,
+        heads=heads,
+        dropout_rate=dropout_rate
+    ).to(device)
+
+    for epoch in range(n_epochs):
+        loss_train = train_GNN(ntw_torch, model_gat, batch_size=batch_size, lr=lr)
+        loss_test = test_GNN(ntw_torch, model_gat)
+        print(f'Epoch: {epoch+1:03d}, Loss Train: {loss_train:.4f}, Loss Test: {loss_test:.4f}')
+
+    # GIN
+    print("GIN: ")
+    model_gin = GIN(
+        num_features=num_features,
+        hidden_dim=hidden_dim,
+        embedding_dim=embedding_dim,
+        output_dim=output_dim,
+        n_layers=n_layers,
+        dropout_rate=dropout_rate
+    ).to(device)
+
+    for epoch in range(n_epochs):
+        loss_train = train_GNN(ntw_torch, model_gin, batch_size=batch_size, lr=lr)
+        loss_test = test_GNN(ntw_torch, model_gin)
         print(f'Epoch: {epoch+1:03d}, Loss Train: {loss_train:.4f}, Loss Test: {loss_test:.4f}')
