@@ -12,43 +12,23 @@ from models.LINE import *
 from utils.Network import *
 from utils.DatasetConstruction import *
 
-def train_node2vec():
-    model.train()
-    total_loss = 0
-    for pos_rw, neg_rw in loader:
-        optimizer.zero_grad()
-        loss = model.loss(pos_rw.to(device), neg_rw.to(device))
-        loss.backward()
-        optimizer.step()
-        total_loss += loss.item()
-    return total_loss
-
-def train_LINE():
-    model.train()
-    total_loss = 0
-    for pos_rw, neg_rw in loader:
-        optimizer.zero_grad()
-        loss = model.loss(pos_rw.to(device), neg_rw.to(device))
-        loss.backward()
-        optimizer.step()
-        total_loss += loss.item()
-    return total_loss
-
 if __name__ == "__main__":
     ### Load Elliptic Dataset ###
     ntw = load_elliptic()
 
     ### Train networkx ###
+    print("networkx: ")
     ntw_nx = ntw.get_network_nx()
     fraud_dict = ntw.get_fraud_dict()
     fraud_dict = {k: 0 if v == 2 else v for k, v in fraud_dict.items()}
     features_nx_df = local_features_nx(ntw_nx, fraud_dict)
 
     ### Train NetworkKit ###
-    #ntw_nk = ntw.get_network_nk()
-    #features_nk_df = features_nk(ntw_nk)
+    print("networkit: ")
+    ntw_nk = ntw.get_network_nk()
+    features_nk_df = features_nk(ntw_nk)
     
-    ### Train PyTorch ###
+    ### Train Torch ###
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
     ntw_torch = ntw.get_network_torch()
@@ -63,9 +43,42 @@ if __name__ == "__main__":
     dropout_rate = 0
     batch_size=128
     lr = 0.02
+    n_epochs = 2
 
-    n_epochs = 5
+    ## Train node2vec 
+    print("node2vec: ")
+    walk_length = 20
+    context_size = 10
+    walks_per_node = 10
+    num_negative_samples = 1
+    p = 1.0
+    q = 1.0
 
+    model_n2v = node2vec_representation(
+        ntw_torch,
+        embedding_dim=embedding_dim,
+        walk_length=walk_length,
+        context_size=context_size,
+        walks_per_node=walks_per_node,
+        num_negative_samples=num_negative_samples,
+        p=p,
+        q=q,
+        lr=lr,
+        n_epochs=n_epochs
+        )
+
+    ### Train LINE ###
+    print("LINE: ")
+    model_LINE = LINE_representation(
+        ntw_torch,
+        embedding_dim=embedding_dim,
+        num_negative_samples=num_negative_samples,
+        lr=lr,
+        n_epochs=n_epochs
+        )
+
+
+    ### Train GNN ###
     # GCN
     print("GCN: ")
     model_gcn = GCN(
