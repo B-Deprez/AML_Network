@@ -9,7 +9,7 @@ from models.LINE import LINE_w1
 
 def node2vec_representation(G_torch: Data, 
                             embedding_dim: int = 128,walk_length: int =20,context_size: int =10,walks_per_node: int =10,num_negative_samples: int =1,p: float =1.0,q: float =1.0, #node2vec hyper-parameters
-                            batch_size: int =128, lr: float =0.01, max_iter: int =150, epochs: int =100): #learning hyper-parameters
+                            batch_size: int =128, lr: float =0.01, max_iter: int =150, n_epochs: int =100): #learning hyper-parameters
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
     
     model = Node2Vec(
@@ -53,7 +53,7 @@ def node2vec_representation(G_torch: Data,
         return acc
     
     
-    for epoch in range(epochs):
+    for epoch in range(n_epochs):
         loss = train()
         acc = test()
         print(f'Epoch: {epoch:03d}, Loss: {loss:.4f}, Acc: {acc:.4f}')
@@ -62,7 +62,7 @@ def node2vec_representation(G_torch: Data,
 
 def LINE_representation(G_torch: Data,
                         embedding_dim:int= 128, num_negative_samples: int=1, #LINE hyper-parameters
-                        batch_size:int =128, lr:float =0.01, max_iter:int =150, epochs: int=100): #learning hyper-parameters
+                        batch_size:int =128, lr:float =0.01, max_iter:int =150, n_epochs: int=100): #learning hyper-parameters
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
     model = LINE_w1(
@@ -86,7 +86,7 @@ def LINE_representation(G_torch: Data,
             total_loss += loss.item()
         return total_loss / len(loader)
     
-    for epoch in range(epochs):
+    for epoch in range(n_epochs):
         loss = train()
         acc = 0 
         print(f'Epoch: {epoch:03d}, Loss: {loss:.4f}, Acc: {acc:.4f}')
