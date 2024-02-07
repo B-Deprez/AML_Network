@@ -146,12 +146,115 @@ def node2vec_features(
             y_pred = decoder(x_test)
             ap_score = round(average_precision_score(y_test.cpu().detach().numpy(), y_pred.cpu().detach().numpy()[:,1]), 2)
             with open(file, w_a) as f:
+                f.write(f"Embedding Dim: {embedding_dim},")
+                f.write(f"Walk Length: {walk_length},")
+                f.write(f"Context Size: {context_size},")
+                f.write(f"Walks per Node: {walks_per_node},")
+                f.write(f"Negative Samples: {num_negative_samples},")
+                f.write(f"P: {p},")
+                f.write(f"Q: {q},")
                 f.write(f"Epochs: {epoch},")
                 f.write(f"Learning Rate: {lr},")
                 f.write(f"Loss: {loss.item()},")
                 f.write(f"AP Score: {ap_score} \n")
             w_a = "a"
 
+def LINE_features(
+        ntw_torch, train_mask, test_mask,
+        embedding_dim,
+        num_negative_samples,
+        lr,
+        n_epochs,
+        n_epochs_decoder_list: list,
+        w_a,
+        file: str = "LINE_results.txt"
+):
+    model_LINE = LINE_representation(
+        ntw_torch,
+        embedding_dim=embedding_dim,
+        num_negative_samples=num_negative_samples,
+        lr=lr,
+        n_epochs=n_epochs
+        )
+
+    device_decoder = (
+        "cuda"
+        if torch.cuda.is_available()
+        else "mps"
+        if torch.backends.mps.is_available()
+        else "cpu"
+    )
+
+    x = model_LINE()
+    x = x.detach()
+
+    x_train = x[train_mask].to(device_decoder)
+    x_test = x[test_mask].to(device_decoder)
+
+    y_train = ntw_torch.y[train_mask].to(device_decoder)
+    y_test = ntw_torch.y[test_mask].to(device_decoder)
+
+    decoder = Decoder_deep_norm(x_train.shape[1], 2, 5).to(device_decoder)
+
+    n_epochs = 100
+    optimizer = torch.optim.Adam(decoder.parameters(), lr=lr)
+    criterion = nn.CrossEntropyLoss()
+
+    n_epochs_decoder = max(n_epochs_decoder_list)
+    for epoch in range(n_epochs_decoder):
+        decoder.train()
+        optimizer.zero_grad()
+        output = decoder(x_train)
+        loss = criterion(output, y_train)
+        loss.backward()
+        optimizer.step()
+        print(f"Epoch {epoch+1}: Loss: {loss.item()}")
+        if epoch in n_epochs_decoder_list:
+            y_pred = decoder(x_test)
+            ap_score = round(average_precision_score(y_test.cpu().detach().numpy(), y_pred.cpu().detach().numpy()[:,1]), 2)
+            with open(file, w_a) as f:
+                f.write(f"Embedding Dim: {embedding_dim},")
+                f.write(f"Negative Samples: {num_negative_samples},")
+                f.write(f"Epochs: {epoch},")
+                f.write(f"Learning Rate: {lr},")
+                f.write(f"Loss: {loss.item()},")
+                f.write(f"AP Score: {ap_score} \n")
+            w_a = "a"
+
+def GNN_features(
+        ntw_torch,
+        model,
+        batch_size, 
+        lr,
+        n_epochs_list
+):
+    hidden_dim = model.hidden_dim
+    embedding_dim = model.embedding_dim
+    output_dim = model.output_dim
+    dropout_rate = model.dropout_rate
+    n_layers = model.n_layers
+
+    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    model = model.to(device)
+
+    name = model._get_name()
+
+    n_epochs = max(n_epochs_list)
+    for epoch in range(n_epochs):
+        loss_train = train_GNN(ntw_torch, model, batch_size=batch_size, lr=lr)
+        loss_test = test_GNN(ntw_torch, model)
+        print(f'Epoch: {epoch+1:03d}, Loss Train: {loss_train:.4f}, Loss Test: {loss_test:.4f}')
+        if epoch in n_epochs_list:
+            with open(name+"_results.txt", "a") as f:
+                f.write(f"Hidden Dim: {hidden_dim},")
+                f.write(f"Embedding Dim: {embedding_dim},")
+                f.write(f"Output Dim: {output_dim},")
+                f.write(f"Layers: {n_layers},")
+                f.write(f"Dropout Rate: {dropout_rate},")
+                f.write(f"Epochs: {epoch},")
+                f.write(f"Learning Rate: {lr},")
+                f.write(f"Loss Train: {loss_train:.4f},")
+                f.write(f"Loss Test: {loss_test:.4f} \n")
 
 if __name__ == "__main__":
     ### Load Elliptic Dataset ###
@@ -177,11 +280,11 @@ if __name__ == "__main__":
     edge_index = ntw_torch.edge_index
     num_features = ntw_torch.num_features
     num_classes = 3
-    hidden_dim = 64
+    hidden_dim_list = 64
     embedding_dim_list = 16
-    output_dim = 2
-    n_layers = 3
-    dropout_rate = 0
+    output_dim_list = 2
+    n_layers_list = 3
+    dropout_rate_list = 0
     batch_size=128
     n_epochs_list = 2 #make list
 
@@ -215,57 +318,36 @@ if __name__ == "__main__":
 
     ### Train LINE ###
     print("LINE: ")
-    model_LINE = LINE_representation(
-        ntw_torch,
-        embedding_dim=embedding_dim,
-        num_negative_samples=num_negative_samples,
-        lr=lr,
-        n_epochs=n_epochs
-        )
-
-    x = model_LINE()
-    x = x.detach()
-
-    x_train = x[train_mask].to(device_decoder)
-    x_test = x[test_mask].to(device_decoder)
-
-    y_train = ntw_torch.y[train_mask].to(device_decoder)
-    y_test = ntw_torch.y[test_mask].to(device_decoder)
-
-    decoder = Decoder_deep_norm(x_train.shape[1], 2, 5).to(device_decoder)
-
-    n_epochs = 100
-    optimizer = torch.optim.Adam(decoder.parameters(), lr=lr)
-    criterion = nn.CrossEntropyLoss()
-
-    for epoch in range(n_epochs_decoder):
-        decoder.train()
-        optimizer.zero_grad()
-        output = decoder(x_train)
-        loss = criterion(output, y_train)
-        loss.backward()
-        optimizer.step()
-        print(f"Epoch {epoch+1}: Loss: {loss.item()}")
-
-
+    w_a = "w" #string to indicate whether the file is being written or appended
+    for embedding_dim in embedding_dim_list:
+        for num_negative_samples in num_negative_samples_list:
+            for lr in lr_list:
+                for n_epochs in n_epochs_list:
+                    LINE_features(
+                        ntw_torch, train_mask, val_mask,
+                        embedding_dim, num_negative_samples, lr, n_epochs, n_epochs_decoder, w_a
+                    )
+                    w_a = "a"
 
     ### Train GNN ###
-    # GCN
-    print("GCN: ")
-    model_gcn = GCN(
-        edge_index=edge_index, 
-        num_features=num_features,
-        hidden_dim=hidden_dim,
-        embedding_dim=embedding_dim,
-        output_dim=output_dim,
-        n_layers=n_layers,
-        dropout_rate=dropout_rate
-        ).to(device)
-    
-    for epoch in range(n_epochs):
-        loss_train = train_GNN(ntw_torch, model_gcn, batch_size=batch_size, lr=lr)
-        loss_test = test_GNN(ntw_torch, model_gcn)
-        print(f'Epoch: {epoch+1:03d}, Loss Train: {loss_train:.4f}, Loss Test: {loss_test:.4f}')
+    for hidden_dim in hidden_dim_list:
+        for embedding_dim in embedding_dim_list:
+            for output_dim in output_dim_list:
+                for n_layers in n_layers_list:
+                    for dropout_rate in dropout_rate_list:
+                        for lr in lr_list:
+                            for n_epochs in n_epochs_list:
+                                ## GCN
+                                model_gcn = GCN(
+                                    edge_index=edge_index, 
+                                    num_features=num_features,
+                                    hidden_dim=hidden_dim,
+                                    embedding_dim=embedding_dim,
+                                    output_dim=output_dim,
+                                    n_layers=n_layers,
+                                    dropout_rate=dropout_rate
+                                    ).to(device)
+                                GNN_features
 
     # GraphSAGE
     print("GraphSAGE: ")
