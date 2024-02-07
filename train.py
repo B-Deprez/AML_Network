@@ -17,6 +17,7 @@ from models.decoder import *
 if __name__ == "__main__":
     ### Load Elliptic Dataset ###
     ntw = load_elliptic()
+    train_mask, val_mask, test_mask = ntw.get_masks()
 
     ### Train positional features ###
     ## Train networkx 
@@ -34,10 +35,10 @@ if __name__ == "__main__":
     ## Concatenate features
     features_df = pd.concat([features_nx_df, features_nk_df], axis=1)
     features_based_on_labels = ["fraud_degree", "legit_degree", "fraud_triangle", "semifraud_triangle", "legit_triangle", "RNC_F_node", "RNC_NF_node"]
-    features_df = features_df.drop(features_based_on_labels, axis=1)[["PSP", "density", "Betweenness", "Closeness", "Eigenvector"]]
+    features_df = features_df.drop(features_based_on_labels, axis=1)
     features_df["fraud"] = [fraud_dict[x] for x in features_df.index]
 
-    device = (
+    device_decoder = (
         "cuda"
         if torch.cuda.is_available()
         else "mps"
@@ -45,29 +46,32 @@ if __name__ == "__main__":
         else "cpu"
     )
 
-    x = torch.tensor(features_df.drop(["PSP","fraud"], axis=1).values, dtype=torch.float32).to(device)
-    y = torch.tensor(features_df["fraud"].values, dtype=torch.long).to(device)
+    features_df_train = features_df[train_mask.numpy()]
 
-    model = Decoder_deep_norm(x.shape[1], 2, 5).to(device)
+    x_train = torch.tensor(features_df_train.drop(["PSP","fraud"], axis=1).values, dtype=torch.float32).to(device_decoder)
+    y_train = torch.tensor(features_df_train["fraud"].values, dtype=torch.long).to(device_decoder)
 
-    n_epochs = 100
-    optimizer = torch.optim.Adam(model.parameters(), lr=1e-3)
+    features_df_test = features_df[test_mask.numpy()]
+
+    x_test = torch.tensor(features_df_test.drop(["PSP","fraud"], axis=1).values, dtype=torch.float32).to(device_decoder)
+    y_test = torch.tensor(features_df_test["fraud"].values, dtype=torch.long).to(device_decoder)
+
+    decoder = Decoder_deep_norm(x_train.shape[1], 2, 5).to(device_decoder)
+
+    n_epochs_decoder = 100
+    lr = 0.02
+
+    optimizer = torch.optim.Adam(decoder.parameters(), lr=lr)
     criterion = nn.CrossEntropyLoss()
 
-    for epoch in range(n_epochs):
-        model.train()
+    for epoch in range(n_epochs_decoder):
+        decoder.train()
         optimizer.zero_grad()
-        output = model(x)
-        loss = criterion(output, y)
+        output = decoder(x_train)
+        loss = criterion(output, y_train)
         loss.backward()
         optimizer.step()
         print(f"Epoch {epoch+1}: Loss: {loss.item()}")
-
-    ## Train decoder
-    print("decoder: ")
-    features_based_on_labels = ["fraud_degree", "legit_degree", "fraud_triangle", "semifraud_triangle", "legit_triangle", "RNC_F_node", "RNC_NF_node"]
-    features_df = features_df.drop(features_based_on_labels, axis=1)
-    features_df = features_df.drop(["PSP"], axis=1)
     
     ### Train Torch ###
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
@@ -83,7 +87,6 @@ if __name__ == "__main__":
     n_layers = 3
     dropout_rate = 0
     batch_size=128
-    lr = 0.02
     n_epochs = 2
 
     ## Train node2vec 
@@ -107,6 +110,31 @@ if __name__ == "__main__":
         lr=lr,
         n_epochs=n_epochs
         )
+    
+    model_n2v.eval()
+    x = model_n2v()
+    x = x.detach()
+
+    x_train = x[train_mask].to(device_decoder)
+    x_test = x[test_mask].to(device_decoder)
+
+    y_train = ntw_torch.y[train_mask].to(device_decoder)
+    y_test = ntw_torch.y[test_mask].to(device_decoder)
+
+    decoder = Decoder_deep_norm(x_train.shape[1], 2, 5).to(device_decoder)
+
+    n_epochs = 100
+    optimizer = torch.optim.Adam(decoder.parameters(), lr=lr)
+    criterion = nn.CrossEntropyLoss()
+
+    for epoch in range(n_epochs_decoder):
+        decoder.train()
+        optimizer.zero_grad()
+        output = decoder(x_train)
+        loss = criterion(output, y_train)
+        loss.backward()
+        optimizer.step()
+        print(f"Epoch {epoch+1}: Loss: {loss.item()}")
 
     ### Train LINE ###
     print("LINE: ")
@@ -117,6 +145,31 @@ if __name__ == "__main__":
         lr=lr,
         n_epochs=n_epochs
         )
+
+    x = model_LINE()
+    x = x.detach()
+
+    x_train = x[train_mask].to(device_decoder)
+    x_test = x[test_mask].to(device_decoder)
+
+    y_train = ntw_torch.y[train_mask].to(device_decoder)
+    y_test = ntw_torch.y[test_mask].to(device_decoder)
+
+    decoder = Decoder_deep_norm(x_train.shape[1], 2, 5).to(device_decoder)
+
+    n_epochs = 100
+    optimizer = torch.optim.Adam(decoder.parameters(), lr=lr)
+    criterion = nn.CrossEntropyLoss()
+
+    for epoch in range(n_epochs_decoder):
+        decoder.train()
+        optimizer.zero_grad()
+        output = decoder(x_train)
+        loss = criterion(output, y_train)
+        loss.backward()
+        optimizer.step()
+        print(f"Epoch {epoch+1}: Loss: {loss.item()}")
+
 
 
     ### Train GNN ###
