@@ -20,7 +20,11 @@ class GCN(nn.Module):
             ):
         super().__init__()
         self.edge_index = edge_index
+        self.num_features = num_features
+        self.hidden_dim = hidden_dim
+        self.embedding_dim = embedding_dim
         self.output_dim = output_dim
+        self.dropout_rate = dropout_rate
         self.dropout = nn.Dropout(dropout_rate)
         self.gcn_hidden = nn.ModuleList()
         self.n_layers = n_layers
@@ -63,9 +67,14 @@ class GraphSAGE(nn.Module): #Neighbourhood sampling only in training step (via D
             ):
         super().__init__()
         self.edge_index = edge_index
+        self.num_features = num_features
+        self.hidden_dim = hidden_dim
+        self.embedding_dim = embedding_dim
         self.output_dim = output_dim
+        self.dropout_rate = dropout_rate
         self.dropout = nn.Dropout(dropout_rate)
         self.n_layers = n_layers
+        self.sage_aggr = sage_aggr
 
         if n_layers == 1:
             self.sage1 = SAGEConv(num_features, embedding_dim, aggr=sage_aggr)
@@ -107,6 +116,7 @@ class GAT(nn.Module):
             ):
         super().__init__()
         self.output_dim = output_dim
+        self.dropout_rate = dropout_rate
         self.dropout = nn.Dropout(dropout_rate)
         self.n_layers = n_layers
 
@@ -148,6 +158,7 @@ class GIN(nn.Module):
             ):
         super().__init__()
         self.output_dim = output_dim
+        self.dropout_rate = dropout_rate
         self.dropout = nn.Dropout(dropout_rate)
         self.n_layers = n_layers
 
@@ -217,6 +228,7 @@ class GINE(nn.Module):
             ):
         super().__init__()
         self.output_dim = output_dim
+        self.dropout_rate = dropout_rate
         self.dropout = nn.Dropout(dropout_rate)
 
         if n_layers == 1:
