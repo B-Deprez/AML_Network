@@ -14,17 +14,18 @@ from utils.DatasetConstruction import *
 
 from models.decoder import *
 
-if __name__ == "__main__":
-    ### Load Elliptic Dataset ###
-    ntw = load_elliptic()
-    train_mask, val_mask, test_mask = ntw.get_masks()
+from sklearn.metrics import average_precision_score
 
-    ### Train positional features ###
-    ## Train networkx 
+def positinal_features(
+        ntw, train_mask, test_mask, fraud_dict,
+        n_epochs_decoder_list: list, 
+        lr: float,
+        w_a,
+        file: str = "positional_results.txt"
+        ):
+    
     print("networkx: ")
     ntw_nx = ntw.get_network_nx()
-    fraud_dict = ntw.get_fraud_dict()
-    fraud_dict = {k: 0 if v == 2 else v for k, v in fraud_dict.items()}
     features_nx_df = local_features_nx(ntw_nx, fraud_dict)
 
     ## Train NetworkKit
@@ -58,12 +59,10 @@ if __name__ == "__main__":
 
     decoder = Decoder_deep_norm(x_train.shape[1], 2, 5).to(device_decoder)
 
-    n_epochs_decoder = 100
-    lr = 0.02
-
     optimizer = torch.optim.Adam(decoder.parameters(), lr=lr)
     criterion = nn.CrossEntropyLoss()
 
+    n_epochs_decoder = max(n_epochs_decoder_list)
     for epoch in range(n_epochs_decoder):
         decoder.train()
         optimizer.zero_grad()
@@ -72,32 +71,31 @@ if __name__ == "__main__":
         loss.backward()
         optimizer.step()
         print(f"Epoch {epoch+1}: Loss: {loss.item()}")
-    
-    ### Train Torch ###
-    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+        if epoch in n_epochs_decoder_list:
+            y_pred = decoder(x_test)
+            ap_score = round(average_precision_score(y_test.cpu().detach().numpy(), y_pred.cpu().detach().numpy()[:,1]), 2)
+            with open(file, w_a) as f:
+                f.write(f"Epochs: {epoch},")
+                f.write(f"Learning Rate: {lr},")
+                f.write(f"Loss: {loss.item()},")
+                f.write(f"AP Score: {ap_score} \n")
+            w_a = "a"
 
-    ntw_torch = ntw.get_network_torch()
-    ntw_torch.x = ntw_torch.x[:,1:]
-    edge_index = ntw_torch.edge_index
-    num_features = ntw_torch.num_features
-    num_classes = 3
-    hidden_dim = 64
-    embedding_dim = 16
-    output_dim = 2
-    n_layers = 3
-    dropout_rate = 0
-    batch_size=128
-    n_epochs = 2
-
-    ## Train node2vec 
-    print("node2vec: ")
-    walk_length = 20
-    context_size = 10
-    walks_per_node = 10
-    num_negative_samples = 1
-    p = 1.0
-    q = 1.0
-
+def node2vec_features(
+        ntw_torch, train_mask, test_mask,
+        embedding_dim, 
+        walk_length, 
+        context_size,
+        walks_per_node,
+        num_negative_samples,
+        p,
+        q,
+        lr,
+        n_epochs,
+        n_epochs_decoder_list: list,
+        w_a, 
+        file: str = "node2vec_results.txt"
+):
     model_n2v = node2vec_representation(
         ntw_torch,
         embedding_dim=embedding_dim,
@@ -110,6 +108,14 @@ if __name__ == "__main__":
         lr=lr,
         n_epochs=n_epochs
         )
+    
+    device_decoder = (
+        "cuda"
+        if torch.cuda.is_available()
+        else "mps"
+        if torch.backends.mps.is_available()
+        else "cpu"
+    )
     
     model_n2v.eval()
     x = model_n2v()
@@ -127,6 +133,7 @@ if __name__ == "__main__":
     optimizer = torch.optim.Adam(decoder.parameters(), lr=lr)
     criterion = nn.CrossEntropyLoss()
 
+    n_epochs_decoder = max(n_epochs_decoder_list)
     for epoch in range(n_epochs_decoder):
         decoder.train()
         optimizer.zero_grad()
@@ -135,6 +142,76 @@ if __name__ == "__main__":
         loss.backward()
         optimizer.step()
         print(f"Epoch {epoch+1}: Loss: {loss.item()}")
+        if epoch in n_epochs_decoder_list:
+            y_pred = decoder(x_test)
+            ap_score = round(average_precision_score(y_test.cpu().detach().numpy(), y_pred.cpu().detach().numpy()[:,1]), 2)
+            with open(file, w_a) as f:
+                f.write(f"Epochs: {epoch},")
+                f.write(f"Learning Rate: {lr},")
+                f.write(f"Loss: {loss.item()},")
+                f.write(f"AP Score: {ap_score} \n")
+            w_a = "a"
+
+
+if __name__ == "__main__":
+    ### Load Elliptic Dataset ###
+    ntw = load_elliptic()
+    train_mask, val_mask, test_mask = ntw.get_masks()
+
+    ### Train positional features ###
+    fraud_dict = ntw.get_fraud_dict()
+    fraud_dict = {k: 0 if v == 2 else v for k, v in fraud_dict.items()}
+    lr_list = [0.01, 0.02, 0.03]
+    n_epochs_decoder = [10, 50, 100]
+    
+    w_a = "w" #string to indicate whether the file is being written or appended
+    for lr in lr_list:
+        positinal_features(ntw, train_mask, val_mask, fraud_dict, n_epochs_decoder, lr, w_a)
+        w_a = "a"
+
+    ### Train Torch ###
+    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+
+    ntw_torch = ntw.get_network_torch()
+    ntw_torch.x = ntw_torch.x[:,1:]
+    edge_index = ntw_torch.edge_index
+    num_features = ntw_torch.num_features
+    num_classes = 3
+    hidden_dim = 64
+    embedding_dim_list = 16
+    output_dim = 2
+    n_layers = 3
+    dropout_rate = 0
+    batch_size=128
+    n_epochs_list = 2 #make list
+
+    ## Train node2vec 
+    print("node2vec: ")
+    walk_length_list = 20
+    context_size_list = 10
+    walks_per_node_list = 10
+    num_negative_samples_list = 1
+    p_list = 1.0
+    q_list = 1.0
+
+    w_a = "w" #string to indicate whether the file is being written or appended
+    for embedding_dim in embedding_dim_list:
+        for walk_length in walk_length_list:
+            for context_size in [cs for cs in context_size_list if cs <= walk_length]:
+                for walks_per_node in walks_per_node_list:
+                    for num_negative_samples in num_negative_samples_list:
+                        for p in p_list:
+                            for q in q_list:
+                                for lr in lr_list:
+                                    for n_epochs in n_epochs_list:
+                                        node2vec_features(
+                                            ntw_torch, train_mask, val_mask,
+                                            embedding_dim, walk_length, context_size, walks_per_node, num_negative_samples, p, q, lr, n_epochs, n_epochs_decoder, w_a
+                                        )
+                                        w_a = "a"
+
+
+    #Include loops for different parameters node2vec
 
     ### Train LINE ###
     print("LINE: ")
