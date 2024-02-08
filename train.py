@@ -222,11 +222,12 @@ def LINE_features(
             w_a = "a"
 
 def GNN_features(
-        ntw_torch,
-        model,
-        batch_size, 
-        lr,
-        n_epochs_list
+        ntw_torch: Data,
+        model: nn.Module,
+        batch_size: int, 
+        lr: float,
+        n_epochs_list: List, 
+        loader: DataLoader =None
 ):
     hidden_dim = model.hidden_dim
     embedding_dim = model.embedding_dim
@@ -241,11 +242,15 @@ def GNN_features(
 
     n_epochs = max(n_epochs_list)
     for epoch in range(n_epochs):
-        loss_train = train_GNN(ntw_torch, model, batch_size=batch_size, lr=lr)
+        loss_train = train_GNN(ntw_torch, model, batch_size=batch_size, lr=lr, loader=loader)
         loss_test = test_GNN(ntw_torch, model)
         print(f'Epoch: {epoch+1:03d}, Loss Train: {loss_train:.4f}, Loss Test: {loss_test:.4f}')
         if epoch in n_epochs_list:
             with open(name+"_results.txt", "a") as f:
+                if name == "GraphSAGE":
+                    f.write(f"Aggregation: {model.sage_aggr},")
+                if name == "GAT":
+                    f.write(f"Heads: {model.heads},")
                 f.write(f"Hidden Dim: {hidden_dim},")
                 f.write(f"Embedding Dim: {embedding_dim},")
                 f.write(f"Output Dim: {output_dim},")
@@ -347,8 +352,56 @@ if __name__ == "__main__":
                                     n_layers=n_layers,
                                     dropout_rate=dropout_rate
                                     ).to(device)
-                                GNN_features
+                                GNN_features(ntw_torch, model_gcn, batch_size, lr, n_epochs_list)
 
+                                ## GraphSAGE
+                                for sage_aggr in sage_aggr_list:
+                                    model_sage = GraphSAGE(
+                                        edge_index=edge_index, 
+                                        num_features=num_features,
+                                        hidden_dim=hidden_dim,
+                                        embedding_dim=embedding_dim,
+                                        output_dim=output_dim,
+                                        n_layers=n_layers,
+                                        dropout_rate=dropout_rate,
+                                        sage_aggr=sage_aggr
+                                    ).to(device)
+                                    loader = NeighborLoader(
+                                        ntw_torch, 
+                                        num_neighbors = num_neighbors,
+                                        input_nodes = ntw_torch.train_mask,
+                                        batch_size = batch_size,
+                                        shuffle = True,
+                                        num_workers = 0
+                                    )
+                                    GNN_features(ntw_torch, model_sage, batch_size, lr, n_epochs_list, loader=loader)
+
+                                ## GAT
+                                for heads in heads_list:
+                                    model_gat = GAT(
+                                        num_features=num_features,
+                                        hidden_dim=hidden_dim,
+                                        embedding_dim=embedding_dim,
+                                        output_dim=output_dim,
+                                        n_layers=n_layers,
+                                        heads=heads,
+                                        dropout_rate=dropout_rate
+                                    ).to(device)
+
+                                    GNN_features(ntw_torch, model_gat, batch_size, lr, n_epochs_list)
+
+                                ## GIN
+                                model_gin = GIN(
+                                    num_features=num_features,
+                                    hidden_dim=hidden_dim,
+                                    embedding_dim=embedding_dim,
+                                    output_dim=output_dim,
+                                    n_layers=n_layers,
+                                    dropout_rate=dropout_rate
+                                ).to(device)
+
+                                GNN_features(ntw_torch, model_gin, batch_size, lr, n_epochs_list)
+                                
     # GraphSAGE
     print("GraphSAGE: ")
     num_neighbors = [2]*n_layers
