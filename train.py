@@ -129,7 +129,6 @@ def node2vec_features(
 
     decoder = Decoder_deep_norm(x_train.shape[1], 2, 5).to(device_decoder)
 
-    n_epochs = 100
     optimizer = torch.optim.Adam(decoder.parameters(), lr=lr)
     criterion = nn.CrossEntropyLoss()
 
@@ -196,7 +195,6 @@ def LINE_features(
 
     decoder = Decoder_deep_norm(x_train.shape[1], 2, 5).to(device_decoder)
 
-    n_epochs = 100
     optimizer = torch.optim.Adam(decoder.parameters(), lr=lr)
     criterion = nn.CrossEntropyLoss()
 
