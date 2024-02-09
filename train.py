@@ -245,7 +245,7 @@ def GNN_features(
     n_epochs = max(n_epochs_list)
     for epoch in range(n_epochs):
         loss_train = train_GNN(ntw_torch, model, batch_size=batch_size, lr=lr, loader=loader)
-        loss_test = test_GNN(ntw_torch, model)
+        loss_test = test_GNN(ntw_torch, model, ntw_torch.val_mask)
         print(f'Epoch: {epoch+1:03d}, Loss Train: {loss_train:.4f}, Loss Test: {loss_test:.4f}')
         if epoch in n_epochs_list:
             with open(name+"_results.txt", w_a) as f:

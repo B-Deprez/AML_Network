@@ -127,12 +127,13 @@ def train_GNN(
 def test_GNN(
         data: Data, 
         model: nn.Module,
+        test_mask: Tensor
 ):
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     model.eval()
     criterion = nn.CrossEntropyLoss()
     out, h = model(data.x, data.edge_index.to(device))
-    y_hat = out[data.test_mask]
-    y = data.y[data.test_mask]
+    y_hat = out[test_mask]
+    y = data.y[test_mask]
     loss = criterion(y_hat, y)
     return(loss)
