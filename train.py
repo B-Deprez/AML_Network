@@ -287,22 +287,22 @@ if __name__ == "__main__":
     edge_index = ntw_torch.edge_index
     num_features = ntw_torch.num_features
     num_classes = 3
-    hidden_dim_list = 64
-    embedding_dim_list = 16
-    output_dim_list = 2
-    n_layers_list = 3
-    dropout_rate_list = 0
+    hidden_dim_list = [64]
+    embedding_dim_list = [16]
+    output_dim = 2
+    n_layers_list = [3]
+    dropout_rate_list = [0]
     batch_size=128
-    n_epochs_list = 2 #make list
+    n_epochs_list = [2]
 
     ## Train node2vec 
     print("node2vec: ")
-    walk_length_list = 20
-    context_size_list = 10
-    walks_per_node_list = 10
-    num_negative_samples_list = 1
-    p_list = 1.0
-    q_list = 1.0
+    walk_length_list = [20]
+    context_size_list = [10]
+    walks_per_node_list = [10]
+    num_negative_samples_list = [1]
+    p_list = [1]
+    q_list = [1]
 
     w_a = "w" #string to indicate whether the file is being written or appended
     for embedding_dim in embedding_dim_list:
@@ -342,96 +342,96 @@ if __name__ == "__main__":
     w_a = "w"
     for hidden_dim in hidden_dim_list:
         for embedding_dim in embedding_dim_list:
-            for output_dim in output_dim_list:
-                for n_layers in n_layers_list:
-                    for dropout_rate in dropout_rate_list:
-                        for lr in lr_list:
-                            for n_epochs in n_epochs_list:
-                                model_gcn = GCN(
+            for n_layers in n_layers_list:
+                for dropout_rate in dropout_rate_list:
+                    for lr in lr_list:
+                        for n_epochs in n_epochs_list:
+                            model_gcn = GCN(
+                                edge_index=edge_index, 
+                                num_features=num_features,
+                                hidden_dim=hidden_dim,
+                                embedding_dim=embedding_dim,
+                                output_dim=output_dim,
+                                n_layers=n_layers,
+                                dropout_rate=dropout_rate
+                                ).to(device)
+                            GNN_features(ntw_torch, model_gcn, batch_size, lr, n_epochs_list, w_a)
+                            w_a = "a"
+                                
+    # GraphSAGE
+    print("GraphSAGE: ")
+    sage_aggr_list = ["mean"]
+    num_neighbors = [2]
+
+    w_a = "w"
+    for hidden_dim in hidden_dim_list:
+        for embedding_dim in embedding_dim_list:
+            for n_layers in n_layers_list:
+                for dropout_rate in dropout_rate_list:
+                    for lr in lr_list:
+                        for n_epochs in n_epochs_list:
+                            for sage_aggr in sage_aggr_list:
+                                model_sage = GraphSAGE(
                                     edge_index=edge_index, 
                                     num_features=num_features,
                                     hidden_dim=hidden_dim,
                                     embedding_dim=embedding_dim,
                                     output_dim=output_dim,
                                     n_layers=n_layers,
-                                    dropout_rate=dropout_rate
-                                    ).to(device)
-                                GNN_features(ntw_torch, model_gcn, batch_size, lr, n_epochs_list, w_a)
+                                    dropout_rate=dropout_rate,
+                                    sage_aggr=sage_aggr
+                                ).to(device)
+                                loader = NeighborLoader(
+                                    ntw_torch, 
+                                    num_neighbors = num_neighbors*n_layers,
+                                    input_nodes = ntw_torch.train_mask,
+                                    batch_size = batch_size,
+                                    shuffle = True,
+                                    num_workers = 0
+                                )
+                                GNN_features(ntw_torch, model_sage, batch_size, lr, n_epochs_list, w_a, loader=loader)
                                 w_a = "a"
-                                
-    # GraphSAGE
-    print("GraphSAGE: ")
-    w_a = "w"
-    for hidden_dim in hidden_dim_list:
-        for embedding_dim in embedding_dim_list:
-            for output_dim in output_dim_list:
-                for n_layers in n_layers_list:
-                    for dropout_rate in dropout_rate_list:
-                        for lr in lr_list:
-                            for n_epochs in n_epochs_list:
-                                for sage_aggr in sage_aggr_list:
-                                    model_sage = GraphSAGE(
-                                        edge_index=edge_index, 
-                                        num_features=num_features,
-                                        hidden_dim=hidden_dim,
-                                        embedding_dim=embedding_dim,
-                                        output_dim=output_dim,
-                                        n_layers=n_layers,
-                                        dropout_rate=dropout_rate,
-                                        sage_aggr=sage_aggr
-                                    ).to(device)
-                                    loader = NeighborLoader(
-                                        ntw_torch, 
-                                        num_neighbors = num_neighbors,
-                                        input_nodes = ntw_torch.train_mask,
-                                        batch_size = batch_size,
-                                        shuffle = True,
-                                        num_workers = 0
-                                    )
-                                    GNN_features(ntw_torch, model_sage, batch_size, lr, n_epochs_list, w_a, loader=loader)
-                                    w_a = "a"
     # GAT
     print("GAT: ")
+    heads_list = [1]
     w_a = "w"
     for hidden_dim in hidden_dim_list:
         for embedding_dim in embedding_dim_list:
-            for output_dim in output_dim_list:
-                for n_layers in n_layers_list:
-                    for dropout_rate in dropout_rate_list:
-                        for lr in lr_list:
-                            for n_epochs in n_epochs_list:
-                                for heads in heads_list:
-                                    model_gat = GAT(
-                                        num_features=num_features,
-                                        hidden_dim=hidden_dim,
-                                        embedding_dim=embedding_dim,
-                                        output_dim=output_dim,
-                                        n_layers=n_layers,
-                                        heads=heads,
-                                        dropout_rate=dropout_rate
-                                    ).to(device)
+            for n_layers in n_layers_list:
+                for dropout_rate in dropout_rate_list:
+                    for lr in lr_list:
+                        for n_epochs in n_epochs_list:
+                            for heads in heads_list:
+                                model_gat = GAT(
+                                    num_features=num_features,
+                                    hidden_dim=hidden_dim,
+                                    embedding_dim=embedding_dim,
+                                    output_dim=output_dim,
+                                    n_layers=n_layers,
+                                    heads=heads,
+                                    dropout_rate=dropout_rate
+                                ).to(device)
 
-                                    GNN_features(ntw_torch, model_gat, batch_size, lr, n_epochs_list, w_a)
-                                    w_a = "a"
+                                GNN_features(ntw_torch, model_gat, batch_size, lr, n_epochs_list, w_a)
+                                w_a = "a"
 
     # GIN
     print("GIN: ")
     w_a = "w"
     for hidden_dim in hidden_dim_list:
         for embedding_dim in embedding_dim_list:
-            for output_dim in output_dim_list:
-                for n_layers in n_layers_list:
-                    for dropout_rate in dropout_rate_list:
-                        for lr in lr_list:
-                            for n_epochs in n_epochs_list:
-                                model_gin = GIN(
-                                    num_features=num_features,
-                                    hidden_dim=hidden_dim,
-                                    embedding_dim=embedding_dim,
-                                    output_dim=output_dim,
-                                    n_layers=n_layers,
-                                    dropout_rate=dropout_rate
-                                ).to(device)
+            for n_layers in n_layers_list:
+                for dropout_rate in dropout_rate_list:
+                    for lr in lr_list:
+                        for n_epochs in n_epochs_list:
+                            model_gin = GIN(
+                                num_features=num_features,
+                                hidden_dim=hidden_dim,
+                                embedding_dim=embedding_dim,
+                                output_dim=output_dim,
+                                n_layers=n_layers,
+                                dropout_rate=dropout_rate
+                            ).to(device)
 
-                                GNN_features(ntw_torch, model_gin, batch_size, lr, n_epochs_list, w_a)
-                                w_a = "a"
+                            GNN_features(ntw_torch, model_gin, batch_size, lr, n_epochs_list, w_a)
+                            w_a = "a"
