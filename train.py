@@ -71,7 +71,7 @@ def positinal_features(
         loss.backward()
         optimizer.step()
         print(f"Epoch {epoch+1}: Loss: {loss.item()}")
-        if epoch in n_epochs_decoder_list:
+        if (epoch+1) in n_epochs_decoder_list:
             y_pred = decoder(x_test)
             ap_score = round(average_precision_score(y_test.cpu().detach().numpy(), y_pred.cpu().detach().numpy()[:,1]), 2)
             with open(file, w_a) as f:
@@ -141,7 +141,7 @@ def node2vec_features(
         loss.backward()
         optimizer.step()
         print(f"Epoch {epoch+1}: Loss: {loss.item()}")
-        if epoch in n_epochs_decoder_list:
+        if (epoch+1) in n_epochs_decoder_list:
             y_pred = decoder(x_test)
             ap_score = round(average_precision_score(y_test.cpu().detach().numpy(), y_pred.cpu().detach().numpy()[:,1]), 2)
             with open(file, w_a) as f:
@@ -207,7 +207,7 @@ def LINE_features(
         loss.backward()
         optimizer.step()
         print(f"Epoch {epoch+1}: Loss: {loss.item()}")
-        if epoch in n_epochs_decoder_list:
+        if (epoch+1) in n_epochs_decoder_list:
             y_pred = decoder(x_test)
             ap_score = round(average_precision_score(y_test.cpu().detach().numpy(), y_pred.cpu().detach().numpy()[:,1]), 2)
             with open(file, w_a) as f:
@@ -244,7 +244,7 @@ def GNN_features(
         loss_train = train_GNN(ntw_torch, model, batch_size=batch_size, lr=lr, loader=loader)
         loss_test = test_GNN(ntw_torch, model, ntw_torch.val_mask)
         print(f'Epoch: {epoch+1:03d}, Loss Train: {loss_train:.4f}, Loss Test: {loss_test:.4f}')
-        if epoch in n_epochs_list:
+        if (epoch+1) in n_epochs_list:
             with open(file, w_a) as f:
                 if name == "GraphSAGE":
                     f.write(f"Aggregation: {model.sage_aggr},")
