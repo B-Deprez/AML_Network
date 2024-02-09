@@ -115,10 +115,14 @@ class GAT(nn.Module):
             dropout_rate: float = 0
             ):
         super().__init__()
+        self.num_features = num_features
+        self.hidden_dim = hidden_dim
+        self.embedding_dim = embedding_dim
         self.output_dim = output_dim
         self.dropout_rate = dropout_rate
         self.dropout = nn.Dropout(dropout_rate)
         self.n_layers = n_layers
+        self.heads = heads
 
         if n_layers == 1:
             self.gat1 = GATv2Conv(num_features, embedding_dim, heads=heads, concat=False)
@@ -157,6 +161,9 @@ class GIN(nn.Module):
             dropout_rate: float = 0
             ):
         super().__init__()
+        self.num_features = num_features
+        self.hidden_dim = hidden_dim
+        self.embedding_dim = embedding_dim
         self.output_dim = output_dim
         self.dropout_rate = dropout_rate
         self.dropout = nn.Dropout(dropout_rate)
@@ -227,9 +234,13 @@ class GINE(nn.Module):
             dropout_rate: float = 0
             ):
         super().__init__()
+        self.num_features = num_features
+        self.edge_dim = edge_dim
+        self.hidden_dim = hidden_dim
         self.output_dim = output_dim
         self.dropout_rate = dropout_rate
         self.dropout = nn.Dropout(dropout_rate)
+        self.n_layers = n_layers
 
         if n_layers == 1:
             self.gine1 = GINEConv(
