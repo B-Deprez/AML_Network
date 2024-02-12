@@ -73,7 +73,7 @@ def positinal_features(
         print(f"Epoch {epoch+1}: Loss: {loss.item()}")
         if (epoch+1) in n_epochs_decoder_list:
             y_pred = decoder(x_test)
-            ap_score = round(average_precision_score(y_test.cpu().detach().numpy(), y_pred.cpu().detach().numpy()[:,1]), 2)
+            ap_score = round(average_precision_score(y_test.cpu().detach().numpy(), y_pred.cpu().detach().numpy()[:,1]), 4)
             with open(file, w_a) as f:
                 f.write(f"Epochs: {epoch},")
                 f.write(f"Learning Rate: {lr},")
@@ -143,7 +143,7 @@ def node2vec_features(
         print(f"Epoch {epoch+1}: Loss: {loss.item()}")
         if (epoch+1) in n_epochs_decoder_list:
             y_pred = decoder(x_test)
-            ap_score = round(average_precision_score(y_test.cpu().detach().numpy(), y_pred.cpu().detach().numpy()[:,1]), 2)
+            ap_score = round(average_precision_score(y_test.cpu().detach().numpy(), y_pred.cpu().detach().numpy()[:,1]), 4)
             with open(file, w_a) as f:
                 f.write(f"Embedding Dim: {embedding_dim},")
                 f.write(f"Walk Length: {walk_length},")
@@ -209,7 +209,7 @@ def LINE_features(
         print(f"Epoch {epoch+1}: Loss: {loss.item()}")
         if (epoch+1) in n_epochs_decoder_list:
             y_pred = decoder(x_test)
-            ap_score = round(average_precision_score(y_test.cpu().detach().numpy(), y_pred.cpu().detach().numpy()[:,1]), 2)
+            ap_score = round(average_precision_score(y_test.cpu().detach().numpy(), y_pred.cpu().detach().numpy()[:,1]), 4)
             with open(file, w_a) as f:
                 f.write(f"Embedding Dim: {embedding_dim},")
                 f.write(f"Negative Samples: {num_negative_samples},")
@@ -297,7 +297,7 @@ if __name__ == "__main__":
     ## Train node2vec 
     print("node2vec: ")
     walk_length_list = [10, 100, 1000]
-    context_size_list = [1, 10, 100]
+    context_size_list = [2, 10, 100]
     walks_per_node_list = [1, 5, 10]
     num_negative_samples_list = [1, 5,10,100]
     p_list = [0.5, 1, 2]

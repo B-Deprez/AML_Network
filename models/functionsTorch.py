@@ -56,7 +56,7 @@ def node2vec_representation(G_torch: Data,
     for epoch in range(n_epochs):
         loss = train()
         acc = test()
-        print(f'Epoch: {epoch:03d}, Loss: {loss:.4f}, Acc: {acc:.4f}')
+        print(f'Epoch: {epoch:03d}, Loss: {loss:.4f}, Acc: {acc:.4f}, len(loader): {len(loader)}')
 
     return model
 
