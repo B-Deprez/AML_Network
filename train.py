@@ -98,6 +98,8 @@ def node2vec_features(
 ):
     model_n2v = node2vec_representation(
         ntw_torch,
+        train_mask = train_mask,
+        test_mask = test_mask,
         embedding_dim=embedding_dim,
         walk_length=walk_length,
         context_size=context_size,
@@ -152,7 +154,8 @@ def node2vec_features(
                 f.write(f"Negative Samples: {num_negative_samples},")
                 f.write(f"P: {p},")
                 f.write(f"Q: {q},")
-                f.write(f"Epochs: {epoch},")
+                f.write(f"Epochs: {n_epochs},")
+                f.write(f"Epochs decoder: {epoch},")
                 f.write(f"Learning Rate: {lr},")
                 f.write(f"Loss: {loss.item()},")
                 f.write(f"AP Score: {ap_score} \n")
@@ -213,7 +216,8 @@ def LINE_features(
             with open(file, w_a) as f:
                 f.write(f"Embedding Dim: {embedding_dim},")
                 f.write(f"Negative Samples: {num_negative_samples},")
-                f.write(f"Epochs: {epoch},")
+                f.write(f"Epochs: {n_epochs},")
+                f.write(f"Epochs decoder: {epoch},")
                 f.write(f"Learning Rate: {lr},")
                 f.write(f"Loss: {loss.item()},")
                 f.write(f"AP Score: {ap_score} \n")

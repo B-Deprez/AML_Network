@@ -7,7 +7,7 @@ from torch_geometric.loader import DataLoader, NeighborLoader
 from torch_geometric.nn import Node2Vec
 from models.LINE import LINE_w1
 
-def node2vec_representation(G_torch: Data, 
+def node2vec_representation(G_torch: Data, train_mask: Tensor, test_mask: Tensor,
                             embedding_dim: int = 128,walk_length: int =20,context_size: int =10,walks_per_node: int =10,num_negative_samples: int =1,p: float =1.0,q: float =1.0, #node2vec hyper-parameters
                             batch_size: int =128, lr: float =0.01, max_iter: int =150, n_epochs: int =100): #learning hyper-parameters
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
@@ -44,10 +44,10 @@ def node2vec_representation(G_torch: Data,
         model.eval()
         z = model()
         acc = model.test(
-            train_z=z[G_torch.train_mask],
-            train_y=G_torch.y[G_torch.train_mask],
-            test_z=z[G_torch.test_mask],
-            test_y=G_torch.y[G_torch.test_mask],
+            train_z=z[train_mask],
+            train_y=G_torch.y[train_mask],
+            test_z=z[test_mask],
+            test_y=G_torch.y[test_mask],
             max_iter=max_iter,
         )
         return acc
@@ -56,7 +56,7 @@ def node2vec_representation(G_torch: Data,
     for epoch in range(n_epochs):
         loss = train()
         acc = test()
-        print(f'Epoch: {epoch:03d}, Loss: {loss:.4f}, Acc: {acc:.4f}, len(loader): {len(loader)}')
+        print(f'Epoch: {epoch:03d}, Loss: {loss:.4f}, Acc: {acc:.4f}')
 
     return model
 

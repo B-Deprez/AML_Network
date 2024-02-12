@@ -35,3 +35,23 @@ def load_elliptic():
     ntw = network_AML(feat_df, edge_df, train_mask=train_mask, val_mask=val_mask, test_mask=test_mask)
 
     return(ntw)
+
+#### Cora dataset ####
+from torch_geometric.datasets import Planetoid
+def load_cora(y = 0):
+    path = './data/Planetoid'
+    dataset = Planetoid(path, name='Cora')
+    data = dataset[0]
+    train_mask, val_mask, test_mask = data.train_mask, data.val_mask, data.test_mask
+    feat_df = pd.DataFrame(data.x.detach().numpy())
+    feat_df.reset_index(inplace=True)
+    feat_df = feat_df.rename(columns={"index": "txId"})
+    edge_df = pd.DataFrame(data.edge_index.detach().numpy().T)
+    edge_df.columns = ['txId1', 'txId2']
+    feat_df["class"] = (data.y.detach().numpy()==1)*1
+
+    ntw = network_AML(feat_df, edge_df, train_mask=train_mask, val_mask=val_mask, test_mask=test_mask)
+
+    return(ntw)
+
+    
