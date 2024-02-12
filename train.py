@@ -226,7 +226,9 @@ def GNN_features(
         lr: float,
         n_epochs_list: List[int], 
         w_a: str,
-        loader: DataLoader =None
+        loader: DataLoader =None,
+        train_mask: torch.Tensor = None,
+        test_mask: torch.Tensor = None
 ):
     hidden_dim = model.hidden_dim
     embedding_dim = model.embedding_dim
@@ -241,8 +243,8 @@ def GNN_features(
     file = name+"_results.txt"
     n_epochs = max(n_epochs_list)
     for epoch in range(n_epochs):
-        loss_train = train_GNN(ntw_torch, model, batch_size=batch_size, lr=lr, loader=loader)
-        loss_test = test_GNN(ntw_torch, model, ntw_torch.val_mask)
+        loss_train = train_GNN(ntw_torch, model, train_mask=train_mask, batch_size=batch_size, lr=lr, loader=loader)
+        loss_test = test_GNN(ntw_torch, model, test_mask=test_mask)
         print(f'Epoch: {epoch+1:03d}, Loss Train: {loss_train:.4f}, Loss Test: {loss_test:.4f}')
         if (epoch+1) in n_epochs_list:
             with open(file, w_a) as f:
@@ -284,22 +286,22 @@ if __name__ == "__main__":
     edge_index = ntw_torch.edge_index
     num_features = ntw_torch.num_features
     num_classes = 3
-    hidden_dim_list = [64]
-    embedding_dim_list = [16]
+    hidden_dim_list = [64, 128, 256]
+    embedding_dim_list = [64, 128, 256]
     output_dim = 2
-    n_layers_list = [3]
-    dropout_rate_list = [0]
+    n_layers_list = [1,2,3,4]
+    dropout_rate_list = [0, 0.5]
     batch_size=128
-    n_epochs_list = [2]
+    n_epochs_list = [1,2, 5, 10]
 
     ## Train node2vec 
     print("node2vec: ")
-    walk_length_list = [20]
-    context_size_list = [10]
-    walks_per_node_list = [10]
-    num_negative_samples_list = [1]
-    p_list = [1]
-    q_list = [1]
+    walk_length_list = [10, 100, 1000]
+    context_size_list = [1, 10, 100]
+    walks_per_node_list = [1, 5, 10]
+    num_negative_samples_list = [1, 5,10,100]
+    p_list = [0.5, 1, 2]
+    q_list = [0.5, 1, 2]
 
     w_a = "w" #string to indicate whether the file is being written or appended
     for embedding_dim in embedding_dim_list:
@@ -351,13 +353,13 @@ if __name__ == "__main__":
                             n_layers=n_layers,
                             dropout_rate=dropout_rate
                             ).to(device)
-                        GNN_features(ntw_torch, model_gcn, batch_size, lr, n_epochs_list, w_a)
+                        GNN_features(ntw_torch, model_gcn, batch_size, lr, n_epochs_list, w_a, train_mask=train_mask, test_mask=val_mask)
                         w_a = "a"
                                 
     # GraphSAGE
     print("GraphSAGE: ")
-    sage_aggr_list = ["mean"]
-    num_neighbors = [2]
+    sage_aggr_list = ["min","mean","max"]
+    num_neighbors = [2, 4, 8, 16, 32]
 
     w_a = "w"
     for hidden_dim in hidden_dim_list:
@@ -384,11 +386,11 @@ if __name__ == "__main__":
                                 shuffle = True,
                                 num_workers = 0
                             )
-                            GNN_features(ntw_torch, model_sage, batch_size, lr, n_epochs_list, w_a, loader=loader)
+                            GNN_features(ntw_torch, model_sage, batch_size, lr, n_epochs_list, w_a, loader=loader, train_mask=train_mask, test_mask=val_mask)
                             w_a = "a"
     # GAT
     print("GAT: ")
-    heads_list = [1]
+    heads_list = [1, 2, 4]
     w_a = "w"
     for hidden_dim in hidden_dim_list:
         for embedding_dim in embedding_dim_list:
@@ -406,7 +408,7 @@ if __name__ == "__main__":
                                 dropout_rate=dropout_rate
                             ).to(device)
 
-                            GNN_features(ntw_torch, model_gat, batch_size, lr, n_epochs_list, w_a)
+                            GNN_features(ntw_torch, model_gat, batch_size, lr, n_epochs_list, w_a, train_mask=train_mask, test_mask=val_mask)
                             w_a = "a"
 
     # GIN
@@ -426,5 +428,5 @@ if __name__ == "__main__":
                             dropout_rate=dropout_rate
                         ).to(device)
 
-                        GNN_features(ntw_torch, model_gin, batch_size, lr, n_epochs_list, w_a)
+                        GNN_features(ntw_torch, model_gin, batch_size, lr, n_epochs_list, w_a, train_mask=train_mask, test_mask=val_mask)
                         w_a = "a"

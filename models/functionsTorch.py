@@ -98,11 +98,12 @@ def train_GNN(
         model: nn.Module,
         loader: DataLoader = None,
         lr: float = 0.02, 
-        batch_size:int =1
+        batch_size:int =1,
+        train_mask: Tensor = None
         ):
     if loader is None:
         try:
-            loader = NeighborLoader(data, num_neighbors= [-1]*model.n_layers,input_nodes=data.train_mask, batch_size=batch_size, shuffle=True, num_workers=0) #Import all neighbours if there is train_mask
+            loader = NeighborLoader(data, num_neighbors= [-1]*model.n_layers, input_nodes=train_mask, batch_size=batch_size, shuffle=True, num_workers=0) #Import all neighbours if there is train_mask
         except:
             loader = NeighborLoader(data, num_neighbors= [-1]*model.n_layers, batch_size=batch_size, shuffle=True, num_workers=0) #Import all neighbours if no train_mask
 
@@ -127,13 +128,17 @@ def train_GNN(
 def test_GNN(
         data: Data, 
         model: nn.Module,
-        test_mask: Tensor
+        test_mask: Tensor = None
 ):
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     model.eval()
     criterion = nn.CrossEntropyLoss()
     out, h = model(data.x, data.edge_index.to(device))
-    y_hat = out[test_mask]
-    y = data.y[test_mask]
+    if test_mask is None: # If no test_mask is provided, use all data
+        y_hat = out
+        y = data.y
+    else:
+        y_hat = out[test_mask]
+        y = data.y[test_mask]
     loss = criterion(y_hat, y)
     return(loss)
