@@ -21,7 +21,7 @@ def positinal_features(
         n_epochs_decoder_list: list, 
         lr: float,
         w_a,
-        file: str = "positional_results.txt"
+        file: str = "misc/positional_results.txt"
         ):
     
     print("networkx: ")
@@ -70,12 +70,12 @@ def positinal_features(
         loss = criterion(output, y_train)
         loss.backward()
         optimizer.step()
-        print(f"Epoch {epoch+1}: Loss: {loss.item()}")
+        #print(f"Epoch {epoch+1}: Loss: {loss.item()}")
         if (epoch+1) in n_epochs_decoder_list:
             y_pred = decoder(x_test)
             ap_score = round(average_precision_score(y_test.cpu().detach().numpy(), y_pred.cpu().detach().numpy()[:,1]), 4)
             with open(file, w_a) as f:
-                f.write(f"Epochs: {epoch},")
+                f.write(f"Epochs: {epoch+1},")
                 f.write(f"Learning Rate: {lr},")
                 f.write(f"Loss: {loss.item()},")
                 f.write(f"AP Score: {ap_score} \n")
@@ -94,7 +94,7 @@ def node2vec_features(
         n_epochs,
         n_epochs_decoder_list: list,
         w_a, 
-        file: str = "node2vec_results.txt"
+        file: str = "misc/node2vec_results.txt"
 ):
     model_n2v = node2vec_representation(
         ntw_torch,
@@ -142,7 +142,7 @@ def node2vec_features(
         loss = criterion(output, y_train)
         loss.backward()
         optimizer.step()
-        print(f"Epoch {epoch+1}: Loss: {loss.item()}")
+        #print(f"Epoch {epoch+1}: Loss: {loss.item()}")
         if (epoch+1) in n_epochs_decoder_list:
             y_pred = decoder(x_test)
             ap_score = round(average_precision_score(y_test.cpu().detach().numpy(), y_pred.cpu().detach().numpy()[:,1]), 4)
@@ -155,7 +155,7 @@ def node2vec_features(
                 f.write(f"P: {p},")
                 f.write(f"Q: {q},")
                 f.write(f"Epochs: {n_epochs},")
-                f.write(f"Epochs decoder: {epoch},")
+                f.write(f"Epochs decoder: {epoch+1},")
                 f.write(f"Learning Rate: {lr},")
                 f.write(f"Loss: {loss.item()},")
                 f.write(f"AP Score: {ap_score} \n")
@@ -169,7 +169,7 @@ def LINE_features(
         n_epochs,
         n_epochs_decoder_list: list,
         w_a,
-        file: str = "LINE_results.txt"
+        file: str = "misc/LINE_results.txt"
 ):
     model_LINE = LINE_representation(
         ntw_torch,
@@ -209,7 +209,7 @@ def LINE_features(
         loss = criterion(output, y_train)
         loss.backward()
         optimizer.step()
-        print(f"Epoch {epoch+1}: Loss: {loss.item()}")
+        #print(f"Epoch {epoch+1}: Loss: {loss.item()}")
         if (epoch+1) in n_epochs_decoder_list:
             y_pred = decoder(x_test)
             ap_score = round(average_precision_score(y_test.cpu().detach().numpy(), y_pred.cpu().detach().numpy()[:,1]), 4)
@@ -217,7 +217,7 @@ def LINE_features(
                 f.write(f"Embedding Dim: {embedding_dim},")
                 f.write(f"Negative Samples: {num_negative_samples},")
                 f.write(f"Epochs: {n_epochs},")
-                f.write(f"Epochs decoder: {epoch},")
+                f.write(f"Epochs decoder: {epoch+1},")
                 f.write(f"Learning Rate: {lr},")
                 f.write(f"Loss: {loss.item()},")
                 f.write(f"AP Score: {ap_score} \n")
@@ -244,12 +244,12 @@ def GNN_features(
     model = model.to(device)
 
     name = str(model._get_name())
-    file = name+"_results.txt"
+    file = "misc/"+name+"_results.txt"
     n_epochs = max(n_epochs_list)
     for epoch in range(n_epochs):
         loss_train = train_GNN(ntw_torch, model, train_mask=train_mask, batch_size=batch_size, lr=lr, loader=loader)
         loss_test = test_GNN(ntw_torch, model, test_mask=test_mask)
-        print(f'Epoch: {epoch+1:03d}, Loss Train: {loss_train:.4f}, Loss Test: {loss_test:.4f}')
+        #print(f'Epoch: {epoch+1:03d}, Loss Train: {loss_train:.4f}, Loss Test: {loss_test:.4f}')
         if (epoch+1) in n_epochs_list:
             with open(file, w_a) as f:
                 if name == "GraphSAGE":
@@ -261,20 +261,21 @@ def GNN_features(
                 f.write(f"Output Dim: {output_dim},")
                 f.write(f"Layers: {n_layers},")
                 f.write(f"Dropout Rate: {dropout_rate},")
-                f.write(f"Epochs: {epoch},")
+                f.write(f"Epochs: {epoch+1},")
                 f.write(f"Learning Rate: {lr},")
                 f.write(f"Loss Train: {loss_train:.4f},")
                 f.write(f"Loss Test: {loss_test:.4f} \n")
 
 if __name__ == "__main__":
     ### Load Elliptic Dataset ###
-    ntw = load_elliptic()
+    #ntw = load_elliptic()
+    ntw = load_cora()
     train_mask, val_mask, test_mask = ntw.get_masks()
 
     ### Train positional features ###
     fraud_dict = ntw.get_fraud_dict()
     fraud_dict = {k: 0 if v == 2 else v for k, v in fraud_dict.items()}
-    lr_list = [0.01, 0.02, 0.03]
+    lr_list = [0.02]
     n_epochs_decoder = [10, 50, 100]
     
     w_a = "w" #string to indicate whether the file is being written or appended
@@ -290,24 +291,25 @@ if __name__ == "__main__":
     edge_index = ntw_torch.edge_index
     num_features = ntw_torch.num_features
     num_classes = 3
-    hidden_dim_list = [64, 128, 256]
-    embedding_dim_list = [64, 128, 256]
+    hidden_dim_list = [128, 256]
+    embedding_dim_list = [64, 128]
     output_dim = 2
-    n_layers_list = [1,2,3,4]
+    n_layers_list = [1,2,3]
     dropout_rate_list = [0, 0.5]
     batch_size=128
-    n_epochs_list = [1,2, 5, 10]
+    n_epochs_list = [1,5,10]
 
     ## Train node2vec 
     print("node2vec: ")
-    walk_length_list = [10, 100, 1000]
-    context_size_list = [2, 10, 100]
-    walks_per_node_list = [1, 5, 10]
-    num_negative_samples_list = [1, 5,10,100]
+    walk_length_list = [10,100]
+    context_size_list = [2,10]
+    walks_per_node_list = [1,5,10]
+    num_negative_samples_list = [1,10]
     p_list = [0.5, 1, 2]
     q_list = [0.5, 1, 2]
 
     w_a = "w" #string to indicate whether the file is being written or appended
+    i = 1 #counter to keep track of the number of iterations
     for embedding_dim in embedding_dim_list:
         for walk_length in walk_length_list:
             for context_size in [cs for cs in context_size_list if cs <= walk_length]:
@@ -322,6 +324,8 @@ if __name__ == "__main__":
                                             embedding_dim, walk_length, context_size, walks_per_node, num_negative_samples, p, q, lr, n_epochs, n_epochs_decoder, w_a
                                         )
                                         w_a = "a"
+                                        print(f"iteration {i} completed")
+                                        i += 1
 
 
     #Include loops for different parameters node2vec
@@ -363,7 +367,7 @@ if __name__ == "__main__":
     # GraphSAGE
     print("GraphSAGE: ")
     sage_aggr_list = ["min","mean","max"]
-    num_neighbors = [2, 4, 8, 16, 32]
+    num_neighbors = [2,4,16]
 
     w_a = "w"
     for hidden_dim in hidden_dim_list:
@@ -394,7 +398,7 @@ if __name__ == "__main__":
                             w_a = "a"
     # GAT
     print("GAT: ")
-    heads_list = [1, 2, 4]
+    heads_list = [1,8]
     w_a = "w"
     for hidden_dim in hidden_dim_list:
         for embedding_dim in embedding_dim_list:

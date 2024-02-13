@@ -55,8 +55,8 @@ def node2vec_representation(G_torch: Data, train_mask: Tensor, test_mask: Tensor
     
     for epoch in range(n_epochs):
         loss = train()
-        acc = test()
-        print(f'Epoch: {epoch:03d}, Loss: {loss:.4f}, Acc: {acc:.4f}')
+        #acc = test()
+        #print(f'Epoch: {epoch:03d}, Loss: {loss:.4f}, Acc: {acc:.4f}')
 
     return model
 
@@ -88,8 +88,8 @@ def LINE_representation(G_torch: Data,
     
     for epoch in range(n_epochs):
         loss = train()
-        acc = 0 
-        print(f'Epoch: {epoch:03d}, Loss: {loss:.4f}, Acc: {acc:.4f}')
+        #acc = 0 
+        #print(f'Epoch: {epoch:03d}, Loss: {loss:.4f}, Acc: {acc:.4f}')
 
     return model
 
