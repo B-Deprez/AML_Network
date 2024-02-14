@@ -16,6 +16,8 @@ from models.decoder import *
 
 from sklearn.metrics import average_precision_score
 
+import optuna
+
 def positinal_features(
         ntw, train_mask, test_mask, fraud_dict,
         n_epochs_decoder_list: list, 
@@ -92,9 +94,7 @@ def node2vec_features(
         q,
         lr,
         n_epochs,
-        n_epochs_decoder_list: list,
-        w_a, 
-        file: str = "misc/node2vec_results.txt"
+        n_epochs_decoder
 ):
     model_n2v = node2vec_representation(
         ntw_torch,
@@ -134,7 +134,6 @@ def node2vec_features(
     optimizer = torch.optim.Adam(decoder.parameters(), lr=lr)
     criterion = nn.CrossEntropyLoss()
 
-    n_epochs_decoder = max(n_epochs_decoder_list)
     for epoch in range(n_epochs_decoder):
         decoder.train()
         optimizer.zero_grad()
@@ -142,24 +141,10 @@ def node2vec_features(
         loss = criterion(output, y_train)
         loss.backward()
         optimizer.step()
-        #print(f"Epoch {epoch+1}: Loss: {loss.item()}")
-        if (epoch+1) in n_epochs_decoder_list:
-            y_pred = decoder(x_test)
-            ap_score = round(average_precision_score(y_test.cpu().detach().numpy(), y_pred.cpu().detach().numpy()[:,1]), 4)
-            with open(file, w_a) as f:
-                f.write(f"Embedding Dim: {embedding_dim},")
-                f.write(f"Walk Length: {walk_length},")
-                f.write(f"Context Size: {context_size},")
-                f.write(f"Walks per Node: {walks_per_node},")
-                f.write(f"Negative Samples: {num_negative_samples},")
-                f.write(f"P: {p},")
-                f.write(f"Q: {q},")
-                f.write(f"Epochs: {n_epochs},")
-                f.write(f"Epochs decoder: {epoch+1},")
-                f.write(f"Learning Rate: {lr},")
-                f.write(f"Loss: {loss.item()},")
-                f.write(f"AP Score: {ap_score} \n")
-            w_a = "a"
+        
+    y_pred = decoder(x_test)
+    ap_score = average_precision_score(y_test.cpu().detach().numpy(), y_pred.cpu().detach().numpy()[:,1])
+    return(ap_score)
 
 def LINE_features(
         ntw_torch, train_mask, test_mask,
@@ -266,6 +251,37 @@ def GNN_features(
                 f.write(f"Loss Train: {loss_train:.4f},")
                 f.write(f"Loss Test: {loss_test:.4f} \n")
 
+#### Optuna objective ####
+def objective_node2vec(trial):
+    embedding_dim = trial.suggest_int('embedding_dim', 2, 64)
+    walk_length = trial.suggest_int('walk_length', 10, 100)
+    context_size = trial.suggest_int('context_size', 2, 10)
+    walks_per_node = trial.suggest_int('walks_per_node', 1, 10)
+    num_negative_samples = trial.suggest_int('num_negative_samples', 1, 10)
+    p = trial.suggest_float('p', 0.5, 2)
+    q = trial.suggest_float('q', 0.5, 2)
+    lr = trial.suggest_float('lr', 0.01, 0.1)
+    n_epochs = trial.suggest_int('n_epochs', 5, 100)
+    n_epochs_decoder = trial.suggest_int('n_epochs_decoder', 5, 100)
+
+    ap_loss = node2vec_features(
+        ntw_torch, 
+        train_mask, 
+        val_mask,
+        embedding_dim, 
+        walk_length, 
+        context_size,
+        walks_per_node,
+        num_negative_samples,
+        p,
+        q,
+        lr,
+        n_epochs,
+        n_epochs_decoder
+        )
+    return(ap_loss)
+
+
 if __name__ == "__main__":
     ### Load Elliptic Dataset ###
     #ntw = load_elliptic()
@@ -301,34 +317,11 @@ if __name__ == "__main__":
 
     ## Train node2vec 
     print("node2vec: ")
-    walk_length_list = [10,100]
-    context_size_list = [2,10]
-    walks_per_node_list = [1,5,10]
-    num_negative_samples_list = [1,10]
-    p_list = [0.5, 1, 2]
-    q_list = [0.5, 1, 2]
-
-    w_a = "w" #string to indicate whether the file is being written or appended
-    i = 1 #counter to keep track of the number of iterations
-    for embedding_dim in embedding_dim_list:
-        for walk_length in walk_length_list:
-            for context_size in [cs for cs in context_size_list if cs <= walk_length]:
-                for walks_per_node in walks_per_node_list:
-                    for num_negative_samples in num_negative_samples_list:
-                        for p in p_list:
-                            for q in q_list:
-                                for lr in lr_list:
-                                    for n_epochs in n_epochs_list:
-                                        node2vec_features(
-                                            ntw_torch, train_mask, val_mask,
-                                            embedding_dim, walk_length, context_size, walks_per_node, num_negative_samples, p, q, lr, n_epochs, n_epochs_decoder, w_a
-                                        )
-                                        w_a = "a"
-                                        print(f"iteration {i} completed")
-                                        i += 1
-
-
-    #Include loops for different parameters node2vec
+    study = optuna.create_study(direction='maximize')
+    study.optimize(objective_node2vec, n_trials=50)
+    node2vec_params = study.best_params
+    with open("misc/node2vec_params.txt", "w") as f:
+        f.write(str(node2vec_params))
 
     ### Train LINE ###
     print("LINE: ")
