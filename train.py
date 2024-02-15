@@ -213,43 +213,29 @@ def GNN_features(
         model: nn.Module,
         batch_size: int, 
         lr: float,
-        n_epochs_list: List[int], 
-        w_a: str,
+        n_epochs: int, 
         loader: DataLoader =None,
         train_mask: torch.Tensor = None,
         test_mask: torch.Tensor = None
 ):
-    hidden_dim = model.hidden_dim
-    embedding_dim = model.embedding_dim
-    output_dim = model.output_dim
-    dropout_rate = model.dropout_rate
-    n_layers = model.n_layers
-
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     model = model.to(device)
 
-    name = str(model._get_name())
-    file = "misc/"+name+"_results.txt"
-    n_epochs = max(n_epochs_list)
     for epoch in range(n_epochs):
         loss_train = train_GNN(ntw_torch, model, train_mask=train_mask, batch_size=batch_size, lr=lr, loader=loader)
-        loss_test = test_GNN(ntw_torch, model, test_mask=test_mask)
-        #print(f'Epoch: {epoch+1:03d}, Loss Train: {loss_train:.4f}, Loss Test: {loss_test:.4f}')
-        if (epoch+1) in n_epochs_list:
-            with open(file, w_a) as f:
-                if name == "GraphSAGE":
-                    f.write(f"Aggregation: {model.sage_aggr},")
-                if name == "GAT":
-                    f.write(f"Heads: {model.heads},")
-                f.write(f"Hidden Dim: {hidden_dim},")
-                f.write(f"Embedding Dim: {embedding_dim},")
-                f.write(f"Output Dim: {output_dim},")
-                f.write(f"Layers: {n_layers},")
-                f.write(f"Dropout Rate: {dropout_rate},")
-                f.write(f"Epochs: {epoch+1},")
-                f.write(f"Learning Rate: {lr},")
-                f.write(f"Loss Train: {loss_train:.4f},")
-                f.write(f"Loss Test: {loss_test:.4f} \n")
+        #loss_test = test_GNN(ntw_torch, model, test_mask=test_mask)
+    
+    model.eval()
+    out, h = model(ntw_torch.x, ntw_torch.edge_index.to(device))
+    if test_mask is None: # If no test_mask is provided, use all data
+        y_hat = out
+        y = ntw_torch.y
+    else:
+        y_hat = out[test_mask]
+        y = ntw_torch.y[test_mask]
+    
+    ap_score = average_precision_score(y.cpu().detach().numpy(), y_hat.cpu().detach().numpy()[:,1])
+    return(ap_score)
 
 #### Optuna objective ####
 def objective_node2vec(trial):
@@ -281,6 +267,119 @@ def objective_node2vec(trial):
         )
     return(ap_loss)
 
+def objective_line(trial):
+    embedding_dim = trial.suggest_int('embedding_dim', 2, 64)
+    num_negative_samples = trial.suggest_int('num_negative_samples', 1, 10)
+    lr = trial.suggest_float('lr', 0.01, 0.1)
+    n_epochs = trial.suggest_int('n_epochs', 5, 100)
+    n_epochs_decoder = trial.suggest_int('n_epochs_decoder', 5, 100)
+
+    ap_loss = LINE_features(
+        ntw_torch, 
+        train_mask, 
+        val_mask,
+        embedding_dim,
+        num_negative_samples,
+        lr,
+        n_epochs,
+        n_epochs_decoder
+        )
+    return(ap_loss)
+
+def objective_gcn(trial):
+    hidden_dim = trial.suggest_int('hidden_dim', 64, 256)
+    embedding_dim = trial.suggest_int('embedding_dim', 32, 128)
+    n_layers = trial.suggest_int('n_layers', 1, 3)
+    dropout_rate = trial.suggest_float('dropout_rate', 0, 0.5)
+    lr = trial.suggest_float('lr', 0.01, 0.1)
+    n_epochs = trial.suggest_int('n_epochs', 5, 100)
+
+    model_gcn = GCN(
+        edge_index=edge_index, 
+        num_features=num_features,
+        hidden_dim=hidden_dim,
+        embedding_dim=embedding_dim,
+        output_dim=output_dim,
+        n_layers=n_layers,
+        dropout_rate=dropout_rate
+        ).to(device)
+    ap_loss = GNN_features(ntw_torch, model_gcn, batch_size, lr, n_epochs, train_mask=train_mask, test_mask=val_mask)
+    return(ap_loss)
+
+def objective_sage(trial):
+    hidden_dim = trial.suggest_int('hidden_dim', 64, 256)
+    embedding_dim = trial.suggest_int('embedding_dim', 32, 128)
+    n_layers = trial.suggest_int('n_layers', 1, 3)
+    dropout_rate = trial.suggest_float('dropout_rate', 0, 0.5)
+    lr = trial.suggest_float('lr', 0.01, 0.1)
+    n_epochs = trial.suggest_int('n_epochs', 5, 100)
+
+    sage_aggr = trial.suggest_categorical('sage_aggr', ["min","mean","max"])
+    num_neighbors = trial.suggest_int("num_neighbors", 2, 16)
+
+    model_sage = GraphSAGE(
+        edge_index=edge_index, 
+        num_features=num_features,
+        hidden_dim=hidden_dim,
+        embedding_dim=embedding_dim,
+        output_dim=output_dim,
+        n_layers=n_layers,
+        dropout_rate=dropout_rate,
+        sage_aggr=sage_aggr
+    ).to(device)
+    loader = NeighborLoader(
+        ntw_torch, 
+        num_neighbors = num_neighbors*n_layers,
+        input_nodes = ntw_torch.train_mask,
+        batch_size = batch_size,
+        shuffle = True,
+        num_workers = 0
+    )
+    ap_loss = GNN_features(ntw_torch, model_sage, batch_size, lr, n_epochs, loader=loader, train_mask=train_mask, test_mask=val_mask)
+    return(ap_loss)
+
+def objective_gat(trial):
+    hidden_dim = trial.suggest_int('hidden_dim', 64, 256)
+    embedding_dim = trial.suggest_int('embedding_dim', 32, 128)
+    n_layers = trial.suggest_int('n_layers', 1, 3)
+    dropout_rate = trial.suggest_float('dropout_rate', 0, 0.5)
+    lr = trial.suggest_float('lr', 0.01, 0.1)
+    n_epochs = trial.suggest_int('n_epochs', 5, 100)
+
+    heads = trial.suggest_int("heads", 1, 8)
+
+    model_gat = GAT(
+        num_features=num_features,
+        hidden_dim=hidden_dim,
+        embedding_dim=embedding_dim,
+        output_dim=output_dim,
+        n_layers=n_layers,
+        heads=heads,
+        dropout_rate=dropout_rate
+    ).to(device)
+
+    ap_loss = GNN_features(ntw_torch, model_gat, batch_size, lr, n_epochs, train_mask=train_mask, test_mask=val_mask)
+    return(ap_loss)
+
+def objective_gin(trial):
+    hidden_dim = trial.suggest_int('hidden_dim', 64, 256)
+    embedding_dim = trial.suggest_int('embedding_dim', 32, 128)
+    n_layers = trial.suggest_int('n_layers', 1, 3)
+    dropout_rate = trial.suggest_float('dropout_rate', 0, 0.5)
+    lr = trial.suggest_float('lr', 0.01, 0.1)
+    n_epochs = trial.suggest_int('n_epochs', 5, 100)
+
+    model_gin = GIN(
+                    num_features=num_features,
+                    hidden_dim=hidden_dim,
+                    embedding_dim=embedding_dim,
+                    output_dim=output_dim,
+                    n_layers=n_layers,
+                    dropout_rate=dropout_rate
+                ).to(device)
+    
+    ap_loss = GNN_features(ntw_torch, model_gin, batch_size, lr, n_epochs, train_mask=train_mask, test_mask=val_mask)
+    return(ap_loss)
 
 if __name__ == "__main__":
     ### Load Elliptic Dataset ###
@@ -307,13 +406,8 @@ if __name__ == "__main__":
     edge_index = ntw_torch.edge_index
     num_features = ntw_torch.num_features
     num_classes = 3
-    hidden_dim_list = [128, 256]
-    embedding_dim_list = [64, 128]
     output_dim = 2
-    n_layers_list = [1,2,3]
-    dropout_rate_list = [0, 0.5]
     batch_size=128
-    n_epochs_list = [1,5,10]
 
     ## Train node2vec 
     print("node2vec: ")
@@ -339,95 +433,32 @@ if __name__ == "__main__":
     ### Train GNN ###
     ## GCN                
     print("GCN: ")
-    w_a = "w"
-    for hidden_dim in hidden_dim_list:
-        for embedding_dim in embedding_dim_list:
-            for n_layers in n_layers_list:
-                for dropout_rate in dropout_rate_list:
-                    for lr in lr_list:
-                        model_gcn = GCN(
-                            edge_index=edge_index, 
-                            num_features=num_features,
-                            hidden_dim=hidden_dim,
-                            embedding_dim=embedding_dim,
-                            output_dim=output_dim,
-                            n_layers=n_layers,
-                            dropout_rate=dropout_rate
-                            ).to(device)
-                        GNN_features(ntw_torch, model_gcn, batch_size, lr, n_epochs_list, w_a, train_mask=train_mask, test_mask=val_mask)
-                        w_a = "a"
+    study = optuna.create_study(direction='maximize')
+    study.optimize(objective_gcn, n_trials=100)
+    gcn_params = study.best_params
+    with open("misc/gcn_params.txt", "w") as f:
+        f.write(str(gcn_params))
                                 
     # GraphSAGE
     print("GraphSAGE: ")
-    sage_aggr_list = ["min","mean","max"]
-    num_neighbors = [2,4,16]
+    study = optuna.create_study(direction='maximize')
+    study.optimize(objective_sage, n_trials=100)
+    sage_params = study.best_params
+    with open("misc/sage_params.txt", "w") as f:
+        f.write(str(sage_params))
 
-    w_a = "w"
-    for hidden_dim in hidden_dim_list:
-        for embedding_dim in embedding_dim_list:
-            for n_layers in n_layers_list:
-                for dropout_rate in dropout_rate_list:
-                    for lr in lr_list:
-                        for sage_aggr in sage_aggr_list:
-                            model_sage = GraphSAGE(
-                                edge_index=edge_index, 
-                                num_features=num_features,
-                                hidden_dim=hidden_dim,
-                                embedding_dim=embedding_dim,
-                                output_dim=output_dim,
-                                n_layers=n_layers,
-                                dropout_rate=dropout_rate,
-                                sage_aggr=sage_aggr
-                            ).to(device)
-                            loader = NeighborLoader(
-                                ntw_torch, 
-                                num_neighbors = num_neighbors*n_layers,
-                                input_nodes = ntw_torch.train_mask,
-                                batch_size = batch_size,
-                                shuffle = True,
-                                num_workers = 0
-                            )
-                            GNN_features(ntw_torch, model_sage, batch_size, lr, n_epochs_list, w_a, loader=loader, train_mask=train_mask, test_mask=val_mask)
-                            w_a = "a"
     # GAT
     print("GAT: ")
-    heads_list = [1,8]
-    w_a = "w"
-    for hidden_dim in hidden_dim_list:
-        for embedding_dim in embedding_dim_list:
-            for n_layers in n_layers_list:
-                for dropout_rate in dropout_rate_list:
-                    for lr in lr_list:
-                        for heads in heads_list:
-                            model_gat = GAT(
-                                num_features=num_features,
-                                hidden_dim=hidden_dim,
-                                embedding_dim=embedding_dim,
-                                output_dim=output_dim,
-                                n_layers=n_layers,
-                                heads=heads,
-                                dropout_rate=dropout_rate
-                            ).to(device)
-
-                            GNN_features(ntw_torch, model_gat, batch_size, lr, n_epochs_list, w_a, train_mask=train_mask, test_mask=val_mask)
-                            w_a = "a"
+    study = optuna.create_study(direction='maximize')
+    study.optimize(objective_gat, n_trials=100)
+    gat_params = study.best_params
+    with open("misc/gat_params.txt", "w") as f:
+        f.write(str(gat_params))
 
     # GIN
     print("GIN: ")
-    w_a = "w"
-    for hidden_dim in hidden_dim_list:
-        for embedding_dim in embedding_dim_list:
-            for n_layers in n_layers_list:
-                for dropout_rate in dropout_rate_list:
-                    for lr in lr_list:
-                        model_gin = GIN(
-                            num_features=num_features,
-                            hidden_dim=hidden_dim,
-                            embedding_dim=embedding_dim,
-                            output_dim=output_dim,
-                            n_layers=n_layers,
-                            dropout_rate=dropout_rate
-                        ).to(device)
-
-                        GNN_features(ntw_torch, model_gin, batch_size, lr, n_epochs_list, w_a, train_mask=train_mask, test_mask=val_mask)
-                        w_a = "a"
+    study = optuna.create_study(direction='maximize')
+    study.optimize(objective_gin, n_trials=100)
+    gin_params = study.best_params
+    with open("misc/gin_params.txt", "w") as f:
+        f.write(str(gin_params))
