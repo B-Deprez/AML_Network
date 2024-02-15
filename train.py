@@ -329,7 +329,7 @@ def objective_sage(trial):
     ).to(device)
     loader = NeighborLoader(
         ntw_torch, 
-        num_neighbors = num_neighbors*n_layers,
+        num_neighbors = [num_neighbors]*n_layers,
         input_nodes = ntw_torch.train_mask,
         batch_size = batch_size,
         shuffle = True,
