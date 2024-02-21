@@ -152,9 +152,7 @@ def LINE_features(
         num_negative_samples,
         lr,
         n_epochs,
-        n_epochs_decoder_list: list,
-        w_a,
-        file: str = "misc/LINE_results.txt"
+        n_epochs_decoder
 ):
     model_LINE = LINE_representation(
         ntw_torch,
@@ -186,7 +184,6 @@ def LINE_features(
     optimizer = torch.optim.Adam(decoder.parameters(), lr=lr)
     criterion = nn.CrossEntropyLoss()
 
-    n_epochs_decoder = max(n_epochs_decoder_list)
     for epoch in range(n_epochs_decoder):
         decoder.train()
         optimizer.zero_grad()
@@ -194,19 +191,10 @@ def LINE_features(
         loss = criterion(output, y_train)
         loss.backward()
         optimizer.step()
-        #print(f"Epoch {epoch+1}: Loss: {loss.item()}")
-        if (epoch+1) in n_epochs_decoder_list:
-            y_pred = decoder(x_test)
-            ap_score = round(average_precision_score(y_test.cpu().detach().numpy(), y_pred.cpu().detach().numpy()[:,1]), 4)
-            with open(file, w_a) as f:
-                f.write(f"Embedding Dim: {embedding_dim},")
-                f.write(f"Negative Samples: {num_negative_samples},")
-                f.write(f"Epochs: {n_epochs},")
-                f.write(f"Epochs decoder: {epoch+1},")
-                f.write(f"Learning Rate: {lr},")
-                f.write(f"Loss: {loss.item()},")
-                f.write(f"AP Score: {ap_score} \n")
-            w_a = "a"
+        
+    y_pred = decoder(x_test)
+    ap_score = average_precision_score(y_test.cpu().detach().numpy(), y_pred.cpu().detach().numpy()[:,1])
+    return(ap_score)
 
 def GNN_features(
         ntw_torch: Data,
@@ -478,16 +466,14 @@ if __name__ == "__main__":
 
     ### Train LINE ###
     print("LINE: ")
-    #w_a = "w" #string to indicate whether the file is being written or appended
-    #for embedding_dim in embedding_dim_list:
-    #    for num_negative_samples in num_negative_samples_list:
-    #        for lr in lr_list:
-    #            for n_epochs in n_epochs_list:
-    #                LINE_features(
-    #                    ntw_torch, train_mask, val_mask,
-    #                    embedding_dim, num_negative_samples, lr, n_epochs, n_epochs_decoder, w_a
-    #                )
-    #                w_a = "a"
+    study = optuna.create_study(direction='maximize')
+    study.optimize(objective_line, n_trials=50)
+    line_params = study.best_params
+    line_values = study.best_value
+    with open("misc/line_params.txt", "w") as f:
+        f.write(str(line_params))
+        f.write("\n")
+        f.write("AUC-PRC: "+str(line_values))
 
     ### Train GNN ###
     ## GCN                
