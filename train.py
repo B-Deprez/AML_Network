@@ -238,12 +238,57 @@ def GNN_features(
     return(ap_score)
 
 #### Optuna objective ####
+def objective_ppr(trial):
+    alpha = trial.suggest_float('alpha', 0.1, 0.9)
+
+    ap_loss = positinal_features(
+        ntw, 
+        train_mask, 
+        val_mask,
+        fraud_dict,
+        n_epochs_decoder,
+        lr
+        )
+    return(ap_loss)
+
+def objective_deepwalk(trial):
+    embedding_dim = trial.suggest_int('embedding_dim', 2, 64)
+    walk_length = trial.suggest_int('walk_length', 3, 10)
+    context_size = trial.suggest_int('context_size', 2, 5)
+    context_size = min(context_size, walk_length-1)
+    walks_per_node = trial.suggest_int('walks_per_node', 1, 3)
+    num_negative_samples = trial.suggest_int('num_negative_samples', 1, 5)
+    p = 1
+    q = 1
+    lr = trial.suggest_float('lr', 0.01, 0.1)
+    n_epochs = trial.suggest_int('n_epochs', 5, 100)
+    n_epochs_decoder = trial.suggest_int('n_epochs_decoder', 5, 100)
+
+    ap_loss = node2vec_features(
+        ntw_torch, 
+        train_mask, 
+        val_mask,
+        embedding_dim, 
+        walk_length, 
+        context_size,
+        walks_per_node,
+        num_negative_samples,
+        p,
+        q,
+        lr,
+        n_epochs,
+        n_epochs_decoder
+        )
+    return(ap_loss)
+
+
 def objective_node2vec(trial):
     embedding_dim = trial.suggest_int('embedding_dim', 2, 64)
-    walk_length = trial.suggest_int('walk_length', 10, 100)
-    context_size = trial.suggest_int('context_size', 2, 10)
-    walks_per_node = trial.suggest_int('walks_per_node', 1, 10)
-    num_negative_samples = trial.suggest_int('num_negative_samples', 1, 10)
+    walk_length = trial.suggest_int('walk_length', 3, 10)
+    context_size = trial.suggest_int('context_size', 2, 5)
+    context_size = min(context_size, walk_length-1)
+    walks_per_node = trial.suggest_int('walks_per_node', 1, 3)
+    num_negative_samples = trial.suggest_int('num_negative_samples', 1, 5)
     p = trial.suggest_float('p', 0.5, 2)
     q = trial.suggest_float('q', 0.5, 2)
     lr = trial.suggest_float('lr', 0.01, 0.1)
@@ -315,7 +360,7 @@ def objective_sage(trial):
     n_epochs = trial.suggest_int('n_epochs', 5, 100)
 
     sage_aggr = trial.suggest_categorical('sage_aggr', ["min","mean","max"])
-    num_neighbors = trial.suggest_int("num_neighbors", 2, 16)
+    num_neighbors = trial.suggest_int("num_neighbors", 2, 5) # Keep number of neighbours low to have scaling benefits
 
     model_sage = GraphSAGE(
         edge_index=edge_index, 
@@ -382,9 +427,9 @@ def objective_gin(trial):
     return(ap_loss)
 
 if __name__ == "__main__":
-    ### Load Elliptic Dataset ###
-    #ntw = load_elliptic()
-    ntw = load_cora()
+    ### Load Dataset ###
+    ntw = load_elliptic()
+    #ntw = load_cora()
     train_mask, val_mask, test_mask = ntw.get_masks()
 
     ### Train positional features ###
@@ -409,26 +454,40 @@ if __name__ == "__main__":
     output_dim = 2
     batch_size=128
 
+    ## Train deepwalk
+    print("deepwalk: ")
+    study = optuna.create_study(direction='maximize')
+    study.optimize(objective_deepwalk, n_trials=50)
+    deepwalk_params = study.best_params
+    deepwalk_values = study.best_value
+    with open("misc/deepwalk_params.txt", "w") as f:
+        f.write(str(deepwalk_params))
+        f.write("\n")
+        f.write("AUC-PRC: "+str(deepwalk_values))
+
     ## Train node2vec 
     print("node2vec: ")
     study = optuna.create_study(direction='maximize')
     study.optimize(objective_node2vec, n_trials=50)
     node2vec_params = study.best_params
+    node2vec_values = study.best_value
     with open("misc/node2vec_params.txt", "w") as f:
         f.write(str(node2vec_params))
+        f.write("\n")
+        f.write("AUC-PRC: "+str(node2vec_values))
 
     ### Train LINE ###
     print("LINE: ")
-    w_a = "w" #string to indicate whether the file is being written or appended
-    for embedding_dim in embedding_dim_list:
-        for num_negative_samples in num_negative_samples_list:
-            for lr in lr_list:
-                for n_epochs in n_epochs_list:
-                    LINE_features(
-                        ntw_torch, train_mask, val_mask,
-                        embedding_dim, num_negative_samples, lr, n_epochs, n_epochs_decoder, w_a
-                    )
-                    w_a = "a"
+    #w_a = "w" #string to indicate whether the file is being written or appended
+    #for embedding_dim in embedding_dim_list:
+    #    for num_negative_samples in num_negative_samples_list:
+    #        for lr in lr_list:
+    #            for n_epochs in n_epochs_list:
+    #                LINE_features(
+    #                    ntw_torch, train_mask, val_mask,
+    #                    embedding_dim, num_negative_samples, lr, n_epochs, n_epochs_decoder, w_a
+    #                )
+    #                w_a = "a"
 
     ### Train GNN ###
     ## GCN                
@@ -436,29 +495,41 @@ if __name__ == "__main__":
     study = optuna.create_study(direction='maximize')
     study.optimize(objective_gcn, n_trials=100)
     gcn_params = study.best_params
+    gcn_values = study.best_value
     with open("misc/gcn_params.txt", "w") as f:
         f.write(str(gcn_params))
+        f.write("\n")
+        f.write("AUC-PRC: "+str(gcn_values))
                                 
     # GraphSAGE
     print("GraphSAGE: ")
     study = optuna.create_study(direction='maximize')
     study.optimize(objective_sage, n_trials=100)
     sage_params = study.best_params
+    sage_values = study.best_value
     with open("misc/sage_params.txt", "w") as f:
         f.write(str(sage_params))
+        f.write("\n")
+        f.write("AUC-PRC: "+str(sage_values))
 
     # GAT
     print("GAT: ")
     study = optuna.create_study(direction='maximize')
     study.optimize(objective_gat, n_trials=100)
     gat_params = study.best_params
+    gat_values = study.best_value
     with open("misc/gat_params.txt", "w") as f:
         f.write(str(gat_params))
+        f.write("\n")
+        f.write("AUC-PRC: "+str(gat_values))
 
     # GIN
     print("GIN: ")
     study = optuna.create_study(direction='maximize')
     study.optimize(objective_gin, n_trials=100)
     gin_params = study.best_params
+    gin_values = study.best_value
     with open("misc/gin_params.txt", "w") as f:
         f.write(str(gin_params))
+        f.write("\n")
+        f.write("AUC-PRC: "+str(gin_values))
