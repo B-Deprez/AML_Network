@@ -71,7 +71,7 @@ class network_AML():
         labels = self.df_features['class']
         features = self.df_features[self.df_features.columns.drop(['txId', 'class'])]
         
-        x = torch.tensor(np.array(features.values, dtype=np.float), dtype=torch.float)
+        x = torch.tensor(np.array(features.values, dtype=float), dtype=torch.float)
         if x.size()[1] == 0:
             x = torch.ones(x.size()[0], 1)
         y = torch.tensor(np.array(labels.values, dtype=np.int64), dtype=torch.int64)
