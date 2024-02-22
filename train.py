@@ -152,7 +152,8 @@ def LINE_features(
         num_negative_samples,
         lr,
         n_epochs,
-        n_epochs_decoder
+        n_epochs_decoder, 
+        order = 2
 ):
     model_LINE = LINE_representation(
         ntw_torch,
@@ -306,6 +307,7 @@ def objective_line(trial):
     lr = trial.suggest_float('lr', 0.01, 0.1)
     n_epochs = trial.suggest_int('n_epochs', 5, 100)
     n_epochs_decoder = trial.suggest_int('n_epochs_decoder', 5, 100)
+    order = trial.suggest_int('order', 1, 2)
 
     ap_loss = LINE_features(
         ntw_torch, 
@@ -315,7 +317,8 @@ def objective_line(trial):
         num_negative_samples,
         lr,
         n_epochs,
-        n_epochs_decoder
+        n_epochs_decoder, 
+        order = order
         )
     return(ap_loss)
 
@@ -427,9 +430,9 @@ if __name__ == "__main__":
     n_epochs_decoder = [10, 50, 100]
     
     w_a = "w" #string to indicate whether the file is being written or appended
-    for lr in lr_list:
-        positinal_features(ntw, train_mask, val_mask, fraud_dict, n_epochs_decoder, lr, w_a)
-        w_a = "a"
+    #for lr in lr_list:
+    #    positinal_features(ntw, train_mask, val_mask, fraud_dict, n_epochs_decoder, lr, w_a)
+    #    w_a = "a"
 
     ### Train Torch ###
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
@@ -444,25 +447,25 @@ if __name__ == "__main__":
 
     ## Train deepwalk
     print("deepwalk: ")
-    study = optuna.create_study(direction='maximize')
-    study.optimize(objective_deepwalk, n_trials=50)
-    deepwalk_params = study.best_params
-    deepwalk_values = study.best_value
-    with open("misc/deepwalk_params.txt", "w") as f:
-        f.write(str(deepwalk_params))
-        f.write("\n")
-        f.write("AUC-PRC: "+str(deepwalk_values))
+    #study = optuna.create_study(direction='maximize')
+    #study.optimize(objective_deepwalk, n_trials=50)
+    #deepwalk_params = study.best_params
+    #deepwalk_values = study.best_value
+    #with open("misc/deepwalk_params.txt", "w") as f:
+    #    f.write(str(deepwalk_params))
+    #    f.write("\n")
+    #    f.write("AUC-PRC: "+str(deepwalk_values))
 
     ## Train node2vec 
-    print("node2vec: ")
-    study = optuna.create_study(direction='maximize')
-    study.optimize(objective_node2vec, n_trials=50)
-    node2vec_params = study.best_params
-    node2vec_values = study.best_value
-    with open("misc/node2vec_params.txt", "w") as f:
-        f.write(str(node2vec_params))
-        f.write("\n")
-        f.write("AUC-PRC: "+str(node2vec_values))
+    #print("node2vec: ")
+    #study = optuna.create_study(direction='maximize')
+    #study.optimize(objective_node2vec, n_trials=50)
+    #node2vec_params = study.best_params
+    #node2vec_values = study.best_value
+    #with open("misc/node2vec_params.txt", "w") as f:
+    #    f.write(str(node2vec_params))
+    #    f.write("\n")
+    #    f.write("AUC-PRC: "+str(node2vec_values))
 
     ### Train LINE ###
     print("LINE: ")

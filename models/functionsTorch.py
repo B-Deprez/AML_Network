@@ -62,7 +62,7 @@ def node2vec_representation(G_torch: Data, train_mask: Tensor, test_mask: Tensor
 
 def LINE_representation(G_torch: Data,
                         embedding_dim:int= 128, num_negative_samples: int=1, #LINE hyper-parameters
-                        batch_size:int =128, lr:float =0.01, max_iter:int =150, n_epochs: int=100): #learning hyper-parameters
+                        batch_size:int =128, lr:float =0.01, n_epochs: int=100, order: int=2): #learning hyper-parameters
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
     model = LINE_w1(
@@ -70,17 +70,18 @@ def LINE_representation(G_torch: Data,
         embedding_dim=embedding_dim,
         num_negative_samples=num_negative_samples,
         sparse=True,
+        order=order,
     ).to(device)
     
-    loader = model.loader(batch_size=128, shuffle=True, num_workers=0)
+    loader = model.loader(batch_size=batch_size, shuffle=True, num_workers=0)
     optimizer = torch.optim.SparseAdam(list(model.parameters()), lr=lr)
 
     def train():
         model.train()
         total_loss = 0
-        for pos_rw, neg_rw in loader:
+        for pos_edges, neg_edges in loader:
             optimizer.zero_grad()
-            loss = model.loss(pos_rw.to(device), neg_rw.to(device))
+            loss = model.loss(pos_edges.to(device), neg_edges.to(device))
             loss.backward()
             optimizer.step()
             total_loss += loss.item()
