@@ -94,17 +94,26 @@ def subsample_true_values_tensor(test_mask, p=0.5):
 
     return output_tensor
 
-def evaluate_model_deep(model, test_mask, n_samples=1000, device = "cpu"):
+def evaluate_model_deep(model, test_mask, n_samples=1000, device = "cpu", loader = None):
     AUC_list = []
     AP_list = []
     model.eval()
 
     for _ in range(n_samples):
         test_mask_new = resample_testmask(test_mask)
-        model.eval()
-        out, h = model(ntw_torch.x, ntw_torch.edge_index.to(device))
-        y_hat = out[test_mask_new].to(device)
-        y = ntw_torch.y[test_mask_new].to(device)
+        if loader is None:
+            model.eval()
+            out, h = model(ntw_torch.x, ntw_torch.edge_index.to(device))
+            y_hat = out[test_mask_new].to(device)
+            y = ntw_torch.y[test_mask_new].to(device)
+            
+        else:
+            batch = next(iter(loader))
+            batch = batch.to(device, 'edge_index')
+            out, h = model(batch.x, batch.edge_index)
+            y_hat = out[:batch.batch_size]
+            y = batch.y[:batch.batch_size]
+        
         AUC = roc_auc_score(y.cpu().detach().numpy(), y_hat.cpu().detach().numpy()[:,1])
         AP = average_precision_score(y.cpu().detach().numpy(), y_hat.cpu().detach().numpy()[:,1])
         AUC_list.append(AUC)
@@ -260,7 +269,7 @@ if __name__ == "__main__":
         sage_aggr = param_dict["sage_aggr"]
     ).to(device)
 
-    loader = NeighborLoader(
+    train_loader = NeighborLoader(
         ntw_torch, 
         num_neighbors=[num_neighbors]*n_layers, 
         input_nodes=train_mask,
@@ -269,8 +278,17 @@ if __name__ == "__main__":
         num_workers=0
     )
 
-    train_model_deep(ntw_torch, model_sage, train_mask, n_epochs, lr, batch_size, loader = None)
-    AUC_list_sage, AP_list_sage = evaluate_model_deep(model_sage, test_mask, n_samples=1000, device = device)
+    test_loader = NeighborLoader(
+        ntw_torch,
+        num_neighbors=[num_neighbors]*n_layers,
+        input_nodes=test_mask,
+        batch_size = int(test_mask.sum()),
+        shuffle=False,
+        num_workers=0
+    )
+
+    train_model_deep(ntw_torch, model_sage, train_mask, n_epochs, lr, batch_size, loader = train_loader)
+    AUC_list_sage, AP_list_sage = evaluate_model_deep(model_sage, test_mask, n_samples=1000, device = device, loader=test_loader)
     save_results(AUC_list_sage, AP_list_sage, "sage")
 
     # GAT
