@@ -38,11 +38,23 @@ def load_elliptic():
 
 #### Cora dataset ####
 from torch_geometric.datasets import Planetoid
-def load_cora(y = 0):
+def load_cora(y = 0, p_train = 0.6, p_val = 0.2):
     path = './data/Planetoid'
     dataset = Planetoid(path, name='Cora')
     data = dataset[0]
-    train_mask, val_mask, test_mask = data.train_mask, data.val_mask, data.test_mask
+
+    mask = torch.tensor([False]*data.x.shape[0])
+    train_size = int(p_train*data.x.shape[0])
+    val_size = int(p_val*data.x.shape[0])
+    test_size = data.x.shape[0] - train_size - val_size
+
+    train_mask = mask.clone()
+    train_mask[:train_size] = True
+    val_mask = mask.clone()
+    val_mask[train_size:train_size+val_size] = True
+    test_mask = mask.clone()
+    test_mask[train_size+val_size:] = True
+
     feat_df = pd.DataFrame(data.x.detach().numpy())
     feat_df.reset_index(inplace=True)
     feat_df = feat_df.rename(columns={"index": "txId"})
