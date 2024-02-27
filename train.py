@@ -203,7 +203,8 @@ def GNN_features(
         batch_size: int, 
         lr: float,
         n_epochs: int, 
-        loader: DataLoader =None,
+        train_loader: DataLoader =None,
+        test_loader: DataLoader =None,
         train_mask: torch.Tensor = None,
         test_mask: torch.Tensor = None
 ):
@@ -211,17 +212,24 @@ def GNN_features(
     model = model.to(device)
 
     for epoch in range(n_epochs):
-        loss_train = train_GNN(ntw_torch, model, train_mask=train_mask, batch_size=batch_size, lr=lr, loader=loader)
+        loss_train = train_GNN(ntw_torch, model, train_mask=train_mask, batch_size=batch_size, lr=lr, loader=train_loader)
         #loss_test = test_GNN(ntw_torch, model, test_mask=test_mask)
     
     model.eval()
-    out, h = model(ntw_torch.x, ntw_torch.edge_index.to(device))
-    if test_mask is None: # If no test_mask is provided, use all data
-        y_hat = out
-        y = ntw_torch.y
+    if test_loader is not None:
+        out, h = model(ntw_torch.x, ntw_torch.edge_index.to(device))
+        if test_mask is None: # If no test_mask is provided, use all data
+            y_hat = out
+            y = ntw_torch.y
+        else:
+            y_hat = out[test_mask]
+            y = ntw_torch.y[test_mask]
     else:
-        y_hat = out[test_mask]
-        y = ntw_torch.y[test_mask]
+        for batch in test_loader:
+            batch = batch.to(device, 'edge_index')
+            out, h = model(batch.x, batch.edge_index)
+            y_hat = out[:batch.batch_size]
+            y = batch.y[:batch.batch_size]
     
     ap_score = average_precision_score(y.cpu().detach().numpy(), y_hat.cpu().detach().numpy()[:,1])
     return(ap_score)
@@ -250,7 +258,7 @@ def objective_deepwalk(trial):
     p = 1
     q = 1
     lr = trial.suggest_float('lr', 0.01, 0.1)
-    n_epochs = trial.suggest_int('n_epochs', 5, 100)
+    n_epochs = trial.suggest_int('n_epochs', 5, 500)
     n_epochs_decoder = trial.suggest_int('n_epochs_decoder', 5, 100)
 
     ap_loss = node2vec_features(
@@ -281,7 +289,7 @@ def objective_node2vec(trial):
     p = trial.suggest_float('p', 0.5, 2)
     q = trial.suggest_float('q', 0.5, 2)
     lr = trial.suggest_float('lr', 0.01, 0.1)
-    n_epochs = trial.suggest_int('n_epochs', 5, 100)
+    n_epochs = trial.suggest_int('n_epochs', 5, 500)
     n_epochs_decoder = trial.suggest_int('n_epochs_decoder', 5, 100)
 
     ap_loss = node2vec_features(
@@ -305,7 +313,7 @@ def objective_line(trial):
     embedding_dim = trial.suggest_int('embedding_dim', 2, 64)
     num_negative_samples = trial.suggest_int('num_negative_samples', 1, 10)
     lr = trial.suggest_float('lr', 0.01, 0.1)
-    n_epochs = trial.suggest_int('n_epochs', 5, 100)
+    n_epochs = trial.suggest_int('n_epochs', 5, 500)
     n_epochs_decoder = trial.suggest_int('n_epochs_decoder', 5, 100)
     order = trial.suggest_int('order', 1, 2)
 
@@ -328,7 +336,7 @@ def objective_gcn(trial):
     n_layers = trial.suggest_int('n_layers', 1, 3)
     dropout_rate = trial.suggest_float('dropout_rate', 0, 0.5)
     lr = trial.suggest_float('lr', 0.01, 0.1)
-    n_epochs = trial.suggest_int('n_epochs', 5, 100)
+    n_epochs = trial.suggest_int('n_epochs', 5, 500)
 
     model_gcn = GCN(
         edge_index=edge_index, 
@@ -348,7 +356,7 @@ def objective_sage(trial):
     n_layers = trial.suggest_int('n_layers', 1, 3)
     dropout_rate = trial.suggest_float('dropout_rate', 0, 0.5)
     lr = trial.suggest_float('lr', 0.01, 0.1)
-    n_epochs = trial.suggest_int('n_epochs', 5, 100)
+    n_epochs = trial.suggest_int('n_epochs', 5, 500)
 
     sage_aggr = trial.suggest_categorical('sage_aggr', ["min","mean","max"])
     num_neighbors = trial.suggest_int("num_neighbors", 2, 5) # Keep number of neighbours low to have scaling benefits
@@ -363,15 +371,25 @@ def objective_sage(trial):
         dropout_rate=dropout_rate,
         sage_aggr=sage_aggr
     ).to(device)
-    loader = NeighborLoader(
+    train_loader = NeighborLoader(
         ntw_torch, 
         num_neighbors = [num_neighbors]*n_layers,
-        input_nodes = ntw_torch.train_mask,
+        input_nodes = train_mask,
         batch_size = batch_size,
         shuffle = True,
         num_workers = 0
     )
-    ap_loss = GNN_features(ntw_torch, model_sage, batch_size, lr, n_epochs, loader=loader, train_mask=train_mask, test_mask=val_mask)
+
+    val_loader = NeighborLoader(
+        ntw_torch, 
+        num_neighbors = [num_neighbors]*n_layers,
+        input_nodes = val_mask,
+        batch_size = int(val_mask.sum()),
+        shuffle = True,
+        num_workers = 0
+    )
+
+    ap_loss = GNN_features(ntw_torch, model_sage, batch_size, lr, n_epochs, train_loader=train_loader,test_loader=val_loader, train_mask=train_mask, test_mask=val_mask)
     return(ap_loss)
 
 def objective_gat(trial):
@@ -380,7 +398,7 @@ def objective_gat(trial):
     n_layers = trial.suggest_int('n_layers', 1, 3)
     dropout_rate = trial.suggest_float('dropout_rate', 0, 0.5)
     lr = trial.suggest_float('lr', 0.01, 0.1)
-    n_epochs = trial.suggest_int('n_epochs', 5, 100)
+    n_epochs = trial.suggest_int('n_epochs', 5, 500)
 
     heads = trial.suggest_int("heads", 1, 8)
 
@@ -403,7 +421,7 @@ def objective_gin(trial):
     n_layers = trial.suggest_int('n_layers', 1, 3)
     dropout_rate = trial.suggest_float('dropout_rate', 0, 0.5)
     lr = trial.suggest_float('lr', 0.01, 0.1)
-    n_epochs = trial.suggest_int('n_epochs', 5, 100)
+    n_epochs = trial.suggest_int('n_epochs', 5, 500)
 
     model_gin = GIN(
                     num_features=num_features,
@@ -430,9 +448,9 @@ if __name__ == "__main__":
     n_epochs_decoder = [10, 50, 100]
     
     w_a = "w" #string to indicate whether the file is being written or appended
-    #for lr in lr_list:
-    #    positinal_features(ntw, train_mask, val_mask, fraud_dict, n_epochs_decoder, lr, w_a)
-    #    w_a = "a"
+    for lr in lr_list:
+        positinal_features(ntw, train_mask, val_mask, fraud_dict, n_epochs_decoder, lr, w_a)
+        w_a = "a"
 
     ### Train Torch ###
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
@@ -447,25 +465,25 @@ if __name__ == "__main__":
 
     ## Train deepwalk
     print("deepwalk: ")
-    #study = optuna.create_study(direction='maximize')
-    #study.optimize(objective_deepwalk, n_trials=50)
-    #deepwalk_params = study.best_params
-    #deepwalk_values = study.best_value
-    #with open("misc/deepwalk_params.txt", "w") as f:
-    #    f.write(str(deepwalk_params))
-    #    f.write("\n")
-    #    f.write("AUC-PRC: "+str(deepwalk_values))
+    study = optuna.create_study(direction='maximize')
+    study.optimize(objective_deepwalk, n_trials=50)
+    deepwalk_params = study.best_params
+    deepwalk_values = study.best_value
+    with open("misc/deepwalk_params.txt", "w") as f:
+        f.write(str(deepwalk_params))
+        f.write("\n")
+        f.write("AUC-PRC: "+str(deepwalk_values))
 
     ## Train node2vec 
-    #print("node2vec: ")
-    #study = optuna.create_study(direction='maximize')
-    #study.optimize(objective_node2vec, n_trials=50)
-    #node2vec_params = study.best_params
-    #node2vec_values = study.best_value
-    #with open("misc/node2vec_params.txt", "w") as f:
-    #    f.write(str(node2vec_params))
-    #    f.write("\n")
-    #    f.write("AUC-PRC: "+str(node2vec_values))
+    print("node2vec: ")
+    study = optuna.create_study(direction='maximize')
+    study.optimize(objective_node2vec, n_trials=50)
+    node2vec_params = study.best_params
+    node2vec_values = study.best_value
+    with open("misc/node2vec_params.txt", "w") as f:
+        f.write(str(node2vec_params))
+        f.write("\n")
+        f.write("AUC-PRC: "+str(node2vec_values))
 
     ### Train LINE ###
     print("LINE: ")
