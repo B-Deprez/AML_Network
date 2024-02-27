@@ -385,7 +385,7 @@ def objective_sage(trial):
         num_neighbors = [num_neighbors]*n_layers,
         input_nodes = val_mask,
         batch_size = int(val_mask.sum()),
-        shuffle = True,
+        shuffle = False,
         num_workers = 0
     )
 
