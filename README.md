@@ -16,4 +16,5 @@ The project repo has the following structure:
 | |-Network.py
 | |-DatasetConstruction.py
 |-train.py
+|-test.py
 ```
