@@ -20,15 +20,15 @@ import optuna
 
 def positinal_features(
         ntw, train_mask, test_mask, fraud_dict,
-        n_epochs_decoder_list: list, 
-        lr: float,
-        w_a,
-        file: str = "misc/positional_results.txt"
+        alpha_pr: float,
+        alpha_ppr: float,
+        n_epochs_decoder: list, 
+        lr: float
         ):
     
     print("networkx: ")
     ntw_nx = ntw.get_network_nx()
-    features_nx_df = local_features_nx(ntw_nx, fraud_dict)
+    features_nx_df = local_features_nx(ntw_nx, fraud_dict, alpha_pr, alpha_ppr)
 
     ## Train NetworkKit
     print("networkit: ")
@@ -64,7 +64,6 @@ def positinal_features(
     optimizer = torch.optim.Adam(decoder.parameters(), lr=lr)
     criterion = nn.CrossEntropyLoss()
 
-    n_epochs_decoder = max(n_epochs_decoder_list)
     for epoch in range(n_epochs_decoder):
         decoder.train()
         optimizer.zero_grad()
@@ -73,15 +72,10 @@ def positinal_features(
         loss.backward()
         optimizer.step()
         #print(f"Epoch {epoch+1}: Loss: {loss.item()}")
-        if (epoch+1) in n_epochs_decoder_list:
-            y_pred = decoder(x_test)
-            ap_score = round(average_precision_score(y_test.cpu().detach().numpy(), y_pred.cpu().detach().numpy()[:,1]), 4)
-            with open(file, w_a) as f:
-                f.write(f"Epochs: {epoch+1},")
-                f.write(f"Learning Rate: {lr},")
-                f.write(f"Loss: {loss.item()},")
-                f.write(f"AP Score: {ap_score} \n")
-            w_a = "a"
+        
+    y_pred = decoder(x_test)
+    ap_score = round(average_precision_score(y_test.cpu().detach().numpy(), y_pred.cpu().detach().numpy()[:,1]), 4)
+    return(ap_score)
 
 def node2vec_features(
         ntw_torch, train_mask, test_mask,
@@ -235,14 +229,19 @@ def GNN_features(
     return(ap_score)
 
 #### Optuna objective ####
-def objective_ppr(trial):
-    alpha = trial.suggest_float('alpha', 0.1, 0.9)
+def objective_positional(trial):
+    alpha_pr = trial.suggest_float('alpha_pr', 0.1, 0.9)
+    alpha_ppr = trial.suggest_float('alpha_ppr', 0.1, 0.9)
+    n_epochs_decoder = trial.suggest_float('n_epochs_decoder', 5, 100)
+    lr = trial.suggest_float('lr', 0.01, 0.1)
 
     ap_loss = positinal_features(
         ntw, 
         train_mask, 
         val_mask,
         fraud_dict,
+        alpha_pr, 
+        alpha_ppr,
         n_epochs_decoder,
         lr
         )
@@ -444,13 +443,17 @@ if __name__ == "__main__":
     ### Train positional features ###
     fraud_dict = ntw.get_fraud_dict()
     fraud_dict = {k: 0 if v == 2 else v for k, v in fraud_dict.items()}
-    lr_list = [0.02]
-    n_epochs_decoder = [10, 50, 100]
     
-    w_a = "w" #string to indicate whether the file is being written or appended
-    for lr in lr_list:
-        positinal_features(ntw, train_mask, val_mask, fraud_dict, n_epochs_decoder, lr, w_a)
-        w_a = "a"
+    ## Train positional features
+    print("positional: ")
+    study = optuna.create_study(direction='maximize')
+    study.optimize(objective_positional, n_trials=100)
+    positional_params = study.best_params
+    positional_values = study.best_value
+    with open("misc/positional_params.txt", "w") as f:
+        f.write(str(positional_params))
+        f.write("\n")
+        f.write("AUC-PRC: "+str(positional_values))
 
     ### Train Torch ###
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')

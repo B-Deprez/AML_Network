@@ -1,9 +1,12 @@
 import networkx as nx
 import pandas as pd
 
-def local_features_nx(G_nx, fraud_dict):
+def local_features_nx(G_nx, fraud_dict, alpha_pr, alpha_ppr):
     feature_dict = dict() #dictionary to save all values
-    
+
+    pr_nx = nx.pagerank(G_nx, alpha=alpha_pr)
+    ppr_nx = nx.pagerank(G_nx, alpha=alpha_ppr)
+
     for node in G_nx.nodes():
         ### Calculate the network features for a single node in the network ###
         ego_net = nx.ego_graph(G_nx, node)
@@ -87,9 +90,11 @@ def local_features_nx(G_nx, fraud_dict):
             legit_triangle,
             density, 
             RNC_F_node, 
-            RNC_NF_node
+            RNC_NF_node, 
+            pr_nx[node],
+            ppr_nx[node]
         ]
 
-    features_df = pd.DataFrame(feature_dict, index=["fraud_degree", "legit_degree", "fraud_triangle", "semifraud_triangle", "legit_triangle", "density", "RNC_F_node", "RNC_NF_node"]).T
+    features_df = pd.DataFrame(feature_dict, index=["fraud_degree", "legit_degree", "fraud_triangle", "semifraud_triangle", "legit_triangle", "density", "RNC_F_node", "RNC_NF_node", "PageRank", "PersonalisedPageRank"]).T
         
     return(features_df)
