@@ -123,11 +123,11 @@ def node2vec_features(
     x = model_n2v()
     x = x.detach()
 
-    x_train = x[train_mask].to(device_decoder)
-    x_test = x[test_mask].to(device_decoder)
+    x_train = x[train_mask].to(device_decoder).squeeze()
+    x_test = x[test_mask].to(device_decoder).squeeze()
 
-    y_train = ntw_torch.y[train_mask].to(device_decoder)
-    y_test = ntw_torch.y[test_mask].to(device_decoder)
+    y_train = ntw_torch.y[train_mask].to(device_decoder).squeeze()
+    y_test = ntw_torch.y[test_mask].to(device_decoder).squeeze()
 
     decoder = Decoder_deep_norm(x_train.shape[1], 2, 5).to(device_decoder)
 
@@ -174,11 +174,11 @@ def LINE_features(
     x = model_LINE()
     x = x.detach()
 
-    x_train = x[train_mask].to(device_decoder)
-    x_test = x[test_mask].to(device_decoder)
+    x_train = x[train_mask].to(device_decoder).squeeze()
+    x_test = x[test_mask].to(device_decoder).squeeze()
 
-    y_train = ntw_torch.y[train_mask].to(device_decoder)
-    y_test = ntw_torch.y[test_mask].to(device_decoder)
+    y_train = ntw_torch.y[train_mask].to(device_decoder).squeeze()
+    y_test = ntw_torch.y[test_mask].to(device_decoder).squeeze()
 
     decoder = Decoder_deep_norm(x_train.shape[1], 2, 5).to(device_decoder)
 
@@ -222,8 +222,8 @@ def GNN_features(
             y_hat = out
             y = ntw_torch.y
         else:
-            y_hat = out[test_mask]
-            y = ntw_torch.y[test_mask]
+            y_hat = out[test_mask].squeeze()
+            y = ntw_torch.y[test_mask].squeeze()
     else:
         for batch in test_loader:
             batch = batch.to(device, 'edge_index')

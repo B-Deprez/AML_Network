@@ -179,9 +179,9 @@ if __name__ == "__main__":
     x = model_deepwalk()
     x = x.detach()
     x_train = x[train_mask].to(device_decoder)
-    x_test = x[test_mask].to(device_decoder)
+    x_test = x[test_mask].to(device_decoder).squeeze()
     y_train = ntw_torch.y[train_mask].to(device_decoder)
-    y_test = ntw_torch.y[test_mask].to(device_decoder)
+    y_test = ntw_torch.y[test_mask].to(device_decoder).squeeze()
 
     model_trained = train_model_shallow(model_deepwalk, x_train, y_train, param_dict["n_epochs_decoder"], param_dict["lr"])
     AUC_list_dw, AP_list_dw = evaluate_model_shallow(model_trained, x_test, y_test, device=device_decoder)
@@ -212,9 +212,9 @@ if __name__ == "__main__":
     x = model_node2vec()
     x = x.detach()
     x_train = x[train_mask].to(device_decoder)
-    x_test = x[test_mask].to(device_decoder)
+    x_test = x[test_mask].to(device_decoder).squeeze()
     y_train = ntw_torch.y[train_mask].to(device_decoder)
-    y_test = ntw_torch.y[test_mask].to(device_decoder)
+    y_test = ntw_torch.y[test_mask].to(device_decoder).squeeze()
 
     model_trained = train_model_shallow(model_node2vec, x_train, y_train, param_dict["n_epochs_decoder"], param_dict["lr"])
     AUC_list_n2v, AP_list_n2v = evaluate_model_shallow(model_trained, x_test, y_test, device=device_decoder)

@@ -139,7 +139,7 @@ def test_GNN(
         y_hat = out
         y = data.y
     else:
-        y_hat = out[test_mask]
-        y = data.y[test_mask]
+        y_hat = out[test_mask].squeeze()
+        y = data.y[test_mask].squeeze()
     loss = criterion(y_hat, y)
     return(loss)
