@@ -19,16 +19,18 @@ from sklearn.metrics import average_precision_score
 import optuna
 
 def positinal_features(
-        ntw, train_mask, test_mask, fraud_dict,
+        ntw, train_mask, test_mask,
         alpha_pr: float,
         alpha_ppr: float,
         n_epochs_decoder: list, 
-        lr: float
+        lr: float,
+        fraud_dict_train: dict = None, 
+        fraud_dict_test: dict = None
         ):
     
     print("networkx: ")
     ntw_nx = ntw.get_network_nx()
-    features_nx_df = local_features_nx(ntw_nx, fraud_dict, alpha_pr, alpha_ppr)
+    features_nx_df = local_features_nx(ntw_nx, alpha_pr, alpha_ppr, fraud_dict_train=fraud_dict_train)
 
     ## Train NetworkKit
     print("networkit: ")
@@ -37,9 +39,7 @@ def positinal_features(
 
     ## Concatenate features
     features_df = pd.concat([features_nx_df, features_nk_df], axis=1)
-    features_based_on_labels = ["fraud_degree", "legit_degree", "fraud_triangle", "semifraud_triangle", "legit_triangle", "RNC_F_node", "RNC_NF_node"]
-    features_df = features_df.drop(features_based_on_labels, axis=1)
-    features_df["fraud"] = [fraud_dict[x] for x in features_df.index]
+    features_df["fraud"] = [fraud_dict_test[x] for x in features_df.index]
 
     device_decoder = (
         "cuda"
@@ -231,7 +231,7 @@ def GNN_features(
 #### Optuna objective ####
 def objective_positional(trial):
     alpha_pr = trial.suggest_float('alpha_pr', 0.1, 0.9)
-    alpha_ppr = trial.suggest_float('alpha_ppr', 0.1, 0.9)
+    alpha_ppr = 0#trial.suggest_float('alpha_ppr', 0.1, 0.9)
     n_epochs_decoder = trial.suggest_int('n_epochs_decoder', 5, 100)
     lr = trial.suggest_float('lr', 0.01, 0.1)
 
@@ -239,11 +239,11 @@ def objective_positional(trial):
         ntw, 
         train_mask, 
         val_mask,
-        fraud_dict,
         alpha_pr, 
         alpha_ppr,
         n_epochs_decoder,
-        lr
+        lr,
+        fraud_dict_test=fraud_dict
         )
     return(ap_loss)
 
