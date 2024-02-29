@@ -232,7 +232,7 @@ def GNN_features(
 def objective_positional(trial):
     alpha_pr = trial.suggest_float('alpha_pr', 0.1, 0.9)
     alpha_ppr = trial.suggest_float('alpha_ppr', 0.1, 0.9)
-    n_epochs_decoder = trial.suggest_float('n_epochs_decoder', 5, 100)
+    n_epochs_decoder = trial.suggest_int('n_epochs_decoder', 5, 100)
     lr = trial.suggest_float('lr', 0.01, 0.1)
 
     ap_loss = positinal_features(

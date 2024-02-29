@@ -5,7 +5,7 @@ def local_features_nx(G_nx, fraud_dict, alpha_pr, alpha_ppr):
     feature_dict = dict() #dictionary to save all values
 
     pr_nx = nx.pagerank(G_nx, alpha=alpha_pr)
-    ppr_nx = nx.pagerank(G_nx, alpha=alpha_ppr)
+    ppr_nx = nx.pagerank(G_nx, alpha=alpha_ppr, personalization=fraud_dict)
 
     for node in G_nx.nodes():
         ### Calculate the network features for a single node in the network ###
