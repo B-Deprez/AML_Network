@@ -108,14 +108,15 @@ def local_features_nx(
                 pr_nx[node],
                 ppr_nx[node]
             ]
-
-        features_df = pd.DataFrame(feature_dict, index=["fraud_degree", "legit_degree", "fraud_triangle", "semifraud_triangle", "legit_triangle", "density", "RNC_F_node", "RNC_NF_node", "PageRank", "PersonalisedPageRank"]).T
-    else:
-        feature_dict[node] = [
+        else:
+            feature_dict[node] = [
                 density, 
                 pr_nx[node]
-            ]
+                ]
 
+    if use_fraud_features:
+        features_df = pd.DataFrame(feature_dict, index=["fraud_degree", "legit_degree", "fraud_triangle", "semifraud_triangle", "legit_triangle", "density", "RNC_F_node", "RNC_NF_node", "PageRank", "PersonalisedPageRank"]).T
+    else:
         features_df = pd.DataFrame(feature_dict, index=["density", "PageRank"]).T
 
 

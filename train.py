@@ -25,7 +25,9 @@ def positinal_features(
         n_epochs_decoder: list, 
         lr: float,
         fraud_dict_train: dict = None, 
-        fraud_dict_test: dict = None
+        fraud_dict_test: dict = None,
+        n_layers_decoder: int = 2,
+        hidden_dim_decoder: int = 5
         ):
     
     print("networkx: ")
@@ -59,7 +61,7 @@ def positinal_features(
     x_test = torch.tensor(features_df_test.drop(["PSP","fraud"], axis=1).values, dtype=torch.float32).to(device_decoder)
     y_test = torch.tensor(features_df_test["fraud"].values, dtype=torch.long).to(device_decoder)
 
-    decoder = Decoder_deep_norm(x_train.shape[1], 2, 5).to(device_decoder)
+    decoder = Decoder_deep_norm(x_train.shape[1], n_layers_decoder, hidden_dim_decoder).to(device_decoder)
 
     optimizer = torch.optim.Adam(decoder.parameters(), lr=lr)
     criterion = nn.CrossEntropyLoss()
@@ -71,10 +73,11 @@ def positinal_features(
         loss = criterion(output, y_train)
         loss.backward()
         optimizer.step()
-        #print(f"Epoch {epoch+1}: Loss: {loss.item()}")
-        
+        print(f"Epoch {epoch+1}: Loss: {loss.item()}")
+    
+    decoder.eval()
     y_pred = decoder(x_test)
-    ap_score = round(average_precision_score(y_test.cpu().detach().numpy(), y_pred.cpu().detach().numpy()[:,1]), 4)
+    ap_score = average_precision_score(y_test.cpu().detach().numpy(), y_pred.cpu().detach().numpy()[:,1])
     return(ap_score)
 
 def node2vec_features(
@@ -135,7 +138,7 @@ def node2vec_features(
         loss = criterion(output, y_train)
         loss.backward()
         optimizer.step()
-        
+    decoder.eval()
     y_pred = decoder(x_test)
     ap_score = average_precision_score(y_test.cpu().detach().numpy(), y_pred.cpu().detach().numpy()[:,1])
     return(ap_score)
@@ -186,7 +189,7 @@ def LINE_features(
         loss = criterion(output, y_train)
         loss.backward()
         optimizer.step()
-        
+    decoder.eval()
     y_pred = decoder(x_test)
     ap_score = average_precision_score(y_test.cpu().detach().numpy(), y_pred.cpu().detach().numpy()[:,1])
     return(ap_score)
@@ -234,6 +237,8 @@ def objective_positional(trial):
     alpha_ppr = 0#trial.suggest_float('alpha_ppr', 0.1, 0.9)
     n_epochs_decoder = trial.suggest_int('n_epochs_decoder', 5, 100)
     lr = trial.suggest_float('lr', 0.01, 0.1)
+    n_layers_decoder = trial.suggest_int('n_layers_decoder', 1, 3)
+    hidden_dim_decoder = trial.suggest_int('hidden_dim_decoder', 5, 20)
 
     ap_loss = positinal_features(
         ntw, 
@@ -243,7 +248,9 @@ def objective_positional(trial):
         alpha_ppr,
         n_epochs_decoder,
         lr,
-        fraud_dict_test=fraud_dict
+        fraud_dict_test=fraud_dict,
+        n_layers_decoder=n_layers_decoder,
+        hidden_dim_decoder=hidden_dim_decoder
         )
     return(ap_loss)
 
@@ -454,7 +461,7 @@ if __name__ == "__main__":
         f.write(str(positional_params))
         f.write("\n")
         f.write("AUC-PRC: "+str(positional_values))
-
+    exit()
     ### Train Torch ###
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
