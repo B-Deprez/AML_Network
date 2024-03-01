@@ -73,7 +73,7 @@ def positinal_features(
         loss = criterion(output, y_train)
         loss.backward()
         optimizer.step()
-        print(f"Epoch {epoch+1}: Loss: {loss.item()}")
+        #print(f"Epoch {epoch+1}: Loss: {loss.item()}")
     
     decoder.eval()
     y_pred = decoder(x_test)
@@ -461,7 +461,7 @@ if __name__ == "__main__":
         f.write(str(positional_params))
         f.write("\n")
         f.write("AUC-PRC: "+str(positional_values))
-    exit()
+    
     ### Train Torch ###
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
