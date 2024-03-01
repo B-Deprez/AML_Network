@@ -4,6 +4,9 @@ import torch.nn as nn
 import torch.functional as F
 import torch.optim as optim
 from torch.utils.data import DataLoader
+import networkx as nx
+import networkit as nk
+import numpy as np
 
 from models.functionsNetworkX import *
 from models.functionsNetworKit import *
@@ -19,10 +22,30 @@ from sklearn.metrics import average_precision_score, roc_auc_score
 from sklearn.utils import resample
 import random
 
-def train_model_shallow(model, x_train, y_train , n_epochs_decoder, lr):
-    model.eval()
+def positional_features_calc(
+        ntw,
+        alpha_pr: float,
+        alpha_ppr: float=None,
+        fraud_dict_train: dict=None,
+        fraud_dict_test: dict=None
+):
+    print("networkx: ")
+    ntw_nx = ntw.get_network_nx()
+    features_nx_df = local_features_nx(ntw_nx, alpha_pr, alpha_ppr, fraud_dict_train=fraud_dict_train)
 
-    decoder = Decoder_deep_norm(x_train.shape[1], 2, 5).to(device_decoder)
+    ## Train NetworkKit
+    print("networkit: ")
+    ntw_nk = ntw.get_network_nk()
+    features_nk_df = features_nk(ntw_nk)
+
+    ## Concatenate features
+    features_df = pd.concat([features_nx_df, features_nk_df], axis=1)
+    features_df["fraud"] = [fraud_dict_test[x] for x in features_df.index]
+    return features_df
+
+def train_model_shallow(x_train, y_train , n_epochs_decoder, lr,
+                        n_layers_decoder=2, hidden_dim_decoder=5, device_decoder="cpu"):
+    decoder = Decoder_deep_norm(x_train.shape[1], n_layers_decoder, hidden_dim_decoder).to(device_decoder)
 
     optimizer = torch.optim.Adam(decoder.parameters(), lr=lr)
     criterion = nn.CrossEntropyLoss()
@@ -136,8 +159,6 @@ if __name__ == "__main__":
     fraud_dict = ntw.get_fraud_dict()
     fraud_dict = {k: 0 if v == 2 else v for k, v in fraud_dict.items()}
     
-    #### Troch models ####
-    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     device_decoder = (
         "cuda"
         if torch.cuda.is_available()
@@ -145,6 +166,45 @@ if __name__ == "__main__":
         if torch.backends.mps.is_available()
         else "cpu"
     )
+
+    print("Positional features")
+    with open("misc/positional_params.txt", "r") as f:
+        params = f.readlines()
+    string_dict = params[0].strip()
+    param_dict = eval(string_dict)
+
+    features_df = positional_features_calc(
+        ntw,
+        alpha_pr = param_dict["alpha_pr"],
+        alpha_ppr=None,
+        fraud_dict_train=None,
+        fraud_dict_test=fraud_dict
+    )
+
+    features_df_train = features_df[train_mask.numpy()]
+
+    x_train = torch.tensor(features_df_train.drop(["PSP","fraud"], axis=1).values, dtype=torch.float32).to(device_decoder)
+    y_train = torch.tensor(features_df_train["fraud"].values, dtype=torch.long).to(device_decoder)
+
+    features_df_test = features_df[test_mask.numpy()]
+
+    x_test = torch.tensor(features_df_test.drop(["PSP","fraud"], axis=1).values, dtype=torch.float32).to(device_decoder)
+    y_test = torch.tensor(features_df_test["fraud"].values, dtype=torch.long).to(device_decoder)
+
+    model_trained = train_model_shallow(
+        x_train,
+        y_train,
+        param_dict["n_epochs_decoder"],
+        param_dict["lr"],
+        n_layers_decoder=param_dict["n_layers_decoder"],
+        hidden_dim_decoder=param_dict["hidden_dim_decoder"],
+        device_decoder=device_decoder
+    )
+    AUC_list_pos, AP_list_pos = evaluate_model_shallow(model_trained, x_test, y_test, device=device_decoder)
+    save_results(AUC_list_pos, AP_list_pos, "positional")
+    
+    #### Troch models ####
+    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
     ntw_torch = ntw.get_network_torch()
     ntw_torch.x = ntw_torch.x[:,1:]
@@ -183,7 +243,7 @@ if __name__ == "__main__":
     y_train = ntw_torch.y[train_mask].to(device_decoder)
     y_test = ntw_torch.y[test_mask].to(device_decoder).squeeze()
 
-    model_trained = train_model_shallow(model_deepwalk, x_train, y_train, param_dict["n_epochs_decoder"], param_dict["lr"])
+    model_trained = train_model_shallow(x_train, y_train, param_dict["n_epochs_decoder"], param_dict["lr"], device_decoder=device_decoder)
     AUC_list_dw, AP_list_dw = evaluate_model_shallow(model_trained, x_test, y_test, device=device_decoder)
     save_results(AUC_list_dw, AP_list_dw, "deepwalk")
 
@@ -216,7 +276,7 @@ if __name__ == "__main__":
     y_train = ntw_torch.y[train_mask].to(device_decoder)
     y_test = ntw_torch.y[test_mask].to(device_decoder).squeeze()
 
-    model_trained = train_model_shallow(model_node2vec, x_train, y_train, param_dict["n_epochs_decoder"], param_dict["lr"])
+    model_trained = train_model_shallow(x_train, y_train, param_dict["n_epochs_decoder"], param_dict["lr"], device_decoder=device_decoder)
     AUC_list_n2v, AP_list_n2v = evaluate_model_shallow(model_trained, x_test, y_test, device=device_decoder)
     save_results(AUC_list_n2v, AP_list_n2v, "node2vec")
 
