@@ -453,14 +453,14 @@ if __name__ == "__main__":
     
     ## Train positional features
     print("positional: ")
-    study = optuna.create_study(direction='maximize')
-    study.optimize(objective_positional, n_trials=100)
-    positional_params = study.best_params
-    positional_values = study.best_value
-    with open("misc/positional_params.txt", "w") as f:
-        f.write(str(positional_params))
-        f.write("\n")
-        f.write("AUC-PRC: "+str(positional_values))
+    #study = optuna.create_study(direction='maximize')
+    #study.optimize(objective_positional, n_trials=100)
+    #positional_params = study.best_params
+    #positional_values = study.best_value
+    #with open("misc/positional_params.txt", "w") as f:
+    #    f.write(str(positional_params))
+    #    f.write("\n")
+    #    f.write("AUC-PRC: "+str(positional_values))
     
     ### Train Torch ###
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
@@ -475,25 +475,25 @@ if __name__ == "__main__":
 
     ## Train deepwalk
     print("deepwalk: ")
-    study = optuna.create_study(direction='maximize')
-    study.optimize(objective_deepwalk, n_trials=50)
-    deepwalk_params = study.best_params
-    deepwalk_values = study.best_value
-    with open("misc/deepwalk_params.txt", "w") as f:
-        f.write(str(deepwalk_params))
-        f.write("\n")
-        f.write("AUC-PRC: "+str(deepwalk_values))
+    #study = optuna.create_study(direction='maximize')
+    #study.optimize(objective_deepwalk, n_trials=50)
+    #deepwalk_params = study.best_params
+    #deepwalk_values = study.best_value
+    #with open("misc/deepwalk_params.txt", "w") as f:
+    #    f.write(str(deepwalk_params))
+    #    f.write("\n")
+    #    f.write("AUC-PRC: "+str(deepwalk_values))
 
     ## Train node2vec 
     print("node2vec: ")
-    study = optuna.create_study(direction='maximize')
-    study.optimize(objective_node2vec, n_trials=50)
-    node2vec_params = study.best_params
-    node2vec_values = study.best_value
-    with open("misc/node2vec_params.txt", "w") as f:
-        f.write(str(node2vec_params))
-        f.write("\n")
-        f.write("AUC-PRC: "+str(node2vec_values))
+    #study = optuna.create_study(direction='maximize')
+    #study.optimize(objective_node2vec, n_trials=50)
+    #node2vec_params = study.best_params
+    #node2vec_values = study.best_value
+    #with open("misc/node2vec_params.txt", "w") as f:
+    #    f.write(str(node2vec_params))
+    #    f.write("\n")
+    #    f.write("AUC-PRC: "+str(node2vec_values))
 
     ### Train LINE ###
     print("LINE: ")
@@ -505,6 +505,8 @@ if __name__ == "__main__":
         f.write(str(line_params))
         f.write("\n")
         f.write("AUC-PRC: "+str(line_values))
+
+    exit()
 
     ### Train GNN ###
     ## GCN                
