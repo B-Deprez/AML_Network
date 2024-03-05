@@ -103,6 +103,11 @@ class network_AML():
         X = self.df_features[columns]
         return(X)
     
+    def get_features_torch(self, full=False):
+        X = self.get_features(full)
+        X = torch.tensor(X.values, dtype=torch.float32)
+        return(X)
+
     def get_train_test_split_intrinsic(self, train_mask, test_mask, device = 'cpu'):
         X = self.get_features()
         y = self.df_features['class']

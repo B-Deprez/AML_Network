@@ -62,6 +62,9 @@ def positinal_features(
         hidden_dim_decoder: int = 5
         ):
     
+    print("intrinsic and summary: ")
+    X = ntw.get_features(full=True)
+    
     print("networkx: ")
     ntw_nx = ntw.get_network_nx()
     features_nx_df = local_features_nx(ntw_nx, alpha_pr, alpha_ppr, fraud_dict_train=fraud_dict_train)
@@ -72,7 +75,7 @@ def positinal_features(
     features_nk_df = features_nk(ntw_nk)
 
     ## Concatenate features
-    features_df = pd.concat([features_nx_df, features_nk_df], axis=1)
+    features_df = pd.concat([X, features_nx_df, features_nk_df], axis=1)
     features_df["fraud"] = [fraud_dict_test[x] for x in features_df.index]
 
     device_decoder = (
@@ -113,7 +116,7 @@ def positinal_features(
     return(ap_score)
 
 def node2vec_features(
-        ntw_torch, train_mask, test_mask,
+        ntw_torch, x_intrinsic, train_mask, test_mask,
         embedding_dim, 
         walk_length, 
         context_size,
@@ -151,6 +154,7 @@ def node2vec_features(
     model_n2v.eval()
     x = model_n2v()
     x = x.detach()
+    x = torch.cat((x, x_intrinsic), 1)
 
     x_train = x[train_mask].to(device_decoder).squeeze()
     x_test = x[test_mask].to(device_decoder).squeeze()
@@ -189,7 +193,8 @@ def LINE_features(
         embedding_dim=embedding_dim,
         num_negative_samples=num_negative_samples,
         lr=lr,
-        n_epochs=n_epochs
+        n_epochs=n_epochs, 
+        order=order
         )
 
     device_decoder = (
@@ -318,6 +323,7 @@ def objective_deepwalk(trial):
 
     ap_loss = node2vec_features(
         ntw_torch, 
+        x_intrinsic,
         train_mask, 
         val_mask,
         embedding_dim, 
@@ -349,6 +355,7 @@ def objective_node2vec(trial):
 
     ap_loss = node2vec_features(
         ntw_torch, 
+        x_intrinsic,
         train_mask, 
         val_mask,
         embedding_dim, 
@@ -532,6 +539,8 @@ if __name__ == "__main__":
     num_classes = 3
     output_dim = 2
     batch_size=128
+
+    x_intrinsic = ntw.get_features_torch()
 
     ## Train deepwalk
     print("deepwalk: ")
