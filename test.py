@@ -29,6 +29,9 @@ def positional_features_calc(
         fraud_dict_train: dict=None,
         fraud_dict_test: dict=None
 ):
+    print("intrinsic and summary: ")
+    X = ntw.get_features(full=True)
+
     print("networkx: ")
     ntw_nx = ntw.get_network_nx()
     features_nx_df = local_features_nx(ntw_nx, alpha_pr, alpha_ppr, fraud_dict_train=fraud_dict_train)
@@ -39,7 +42,7 @@ def positional_features_calc(
     features_nk_df = features_nk(ntw_nk)
 
     ## Concatenate features
-    features_df = pd.concat([features_nx_df, features_nk_df], axis=1)
+    features_df = pd.concat([X, features_nx_df, features_nk_df], axis=1)
     features_df["fraud"] = [fraud_dict_test[x] for x in features_df.index]
     return features_df
 
@@ -207,6 +210,8 @@ if __name__ == "__main__":
     save_results(AUC_list_intr, AP_list_intr, precision_list_intr, recall_list_intr, F1_list_intr, "intrinsic")
 
     ### Positional features ###
+    x_intrinsic = ntw.get_features_torch()
+
     fraud_dict = ntw.get_fraud_dict()
     fraud_dict = {k: 0 if v == 2 else v for k, v in fraud_dict.items()}
 
@@ -281,6 +286,7 @@ if __name__ == "__main__":
 
     x = model_deepwalk()
     x = x.detach()
+    x = torch.cat((x, x_intrinsic), 1)
     x_train = x[train_mask].to(device_decoder)
     x_test = x[test_mask].to(device_decoder).squeeze()
     y_train = ntw_torch.y[train_mask].to(device_decoder)
@@ -314,6 +320,7 @@ if __name__ == "__main__":
 
     x = model_node2vec()
     x = x.detach()
+    x = torch.cat((x, x_intrinsic), 1)
     x_train = x[train_mask].to(device_decoder)
     x_test = x[test_mask].to(device_decoder).squeeze()
     y_train = ntw_torch.y[train_mask].to(device_decoder)
