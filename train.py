@@ -30,21 +30,7 @@ def intrinsic_features(
         else "cpu"
     )
 
-    columns = [i for i in range(2, 95)]
-    X = ntw.df_features[columns]
-    y = ntw.df_features['class']
-
-    X_train = X[train_mask.numpy()]
-    y_train = y[train_mask.numpy()]
-    
-    X_test = X[test_mask.numpy()]
-    y_test = y[test_mask.numpy()]
-
-    X_train = torch.tensor(X_train.values, dtype=torch.float32).to(device_decoder)
-    y_train = torch.tensor(y_train.values, dtype=torch.long).to(device_decoder)
-
-    X_test = torch.tensor(X_test.values, dtype=torch.float32).to(device_decoder)
-    y_test = torch.tensor(y_test.values, dtype=torch.long).to(device_decoder)
+    X_train, y_train, X_test, y_test = ntw.get_train_test_split_intrinsic(train_mask, test_mask, device=device_decoder)
 
     decoder = Decoder_deep_norm(X_train.shape[1], n_layers_decoder, hidden_dim_decoder).to(device_decoder)
 

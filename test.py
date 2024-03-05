@@ -199,21 +199,7 @@ if __name__ == "__main__":
     string_dict = params[0].strip()
     param_dict = eval(string_dict)
 
-    columns = [i for i in range(2, 95)]
-    X = ntw.df_features[columns]
-    y = ntw.df_features['class']
-
-    X_train = X[train_mask.numpy()]
-    y_train = y[train_mask.numpy()]
-
-    X_test = X[test_mask.numpy()]
-    y_test = y[test_mask.numpy()]
-
-    X_train = torch.tensor(X_train.values, dtype=torch.float32).to(device_decoder)
-    y_train = torch.tensor(y_train.values, dtype=torch.long).to(device_decoder)
-
-    X_test = torch.tensor(X_test.values, dtype=torch.float32).to(device_decoder)
-    y_test = torch.tensor(y_test.values, dtype=torch.long).to(device_decoder)
+    X_train, y_train, X_test, y_test = ntw.get_train_test_split_intrinsic(train_mask, test_mask, device=device_decoder)
 
     model_trained = train_model_shallow(X_train, y_train, param_dict["n_epochs_decoder"], param_dict["lr"], n_layers_decoder=param_dict["n_layers_decoder"], hidden_dim_decoder=param_dict["hidden_dim_decoder"], device_decoder=device_decoder)
 

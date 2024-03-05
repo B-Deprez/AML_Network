@@ -95,6 +95,33 @@ class network_AML():
         
         return(data)
     
+    def get_features(self, full=False):
+        if full:
+            columns = [i for i in range(2, 167)]
+        else:
+            columns = [i for i in range(2, 95)]
+        X = self.df_features[columns]
+        return(X)
+    
+    def get_train_test_split_intrinsic(self, train_mask, test_mask, device = 'cpu'):
+        X = self.get_features()
+        y = self.df_features['class']
+
+        X_train = X[train_mask.numpy()]
+        y_train = y[train_mask.numpy()]
+
+        X_test = X[test_mask.numpy()]
+        y_test = y[test_mask.numpy()]
+
+        X_train = torch.tensor(X_train.values, dtype=torch.float32).to(device)
+        y_train = torch.tensor(y_train.values, dtype=torch.long).to(device)
+
+        X_test = torch.tensor(X_test.values, dtype=torch.float32).to(device)
+        y_test = torch.tensor(y_test.values, dtype=torch.long).to(device)
+
+        
+        return(X_train, y_train, X_test, y_test)
+
     def get_fraud_dict(self):
         return(self.fraud_dict)
     
