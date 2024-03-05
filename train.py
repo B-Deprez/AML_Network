@@ -18,6 +18,52 @@ from sklearn.metrics import average_precision_score
 
 import optuna
 
+def intrinsic_features(
+        ntw, train_mask, test_mask,
+        n_layers_decoder, hidden_dim_decoder, lr, n_epochs_decoder
+):
+    device_decoder = (
+        "cuda"
+        if torch.cuda.is_available()
+        else "mps"
+        if torch.backends.mps.is_available()
+        else "cpu"
+    )
+
+    columns = [i for i in range(2, 95)]
+    X = ntw.df_features[columns]
+    y = ntw.df_features['class']
+
+    X_train = X[train_mask.numpy()]
+    y_train = y[train_mask.numpy()]
+    
+    X_test = X[test_mask.numpy()]
+    y_test = y[test_mask.numpy()]
+
+    X_train = torch.tensor(X_train.values, dtype=torch.float32).to(device_decoder)
+    y_train = torch.tensor(y_train.values, dtype=torch.long).to(device_decoder)
+
+    X_test = torch.tensor(X_test.values, dtype=torch.float32).to(device_decoder)
+    y_test = torch.tensor(y_test.values, dtype=torch.long).to(device_decoder)
+
+    decoder = Decoder_deep_norm(X_train.shape[1], n_layers_decoder, hidden_dim_decoder).to(device_decoder)
+
+    optimizer = torch.optim.Adam(decoder.parameters(), lr=lr)
+    criterion = nn.CrossEntropyLoss()
+
+    for epoch in range(n_epochs_decoder):
+        decoder.train()
+        optimizer.zero_grad()
+        output = decoder(X_train)
+        loss = criterion(output, y_train)
+        loss.backward()
+        optimizer.step()
+
+    decoder.eval()
+    y_pred = decoder(X_test)
+    ap_score = average_precision_score(y_test.cpu().detach().numpy(), y_pred.cpu().detach().numpy()[:,1])
+    return(ap_score)
+
 def positinal_features(
         ntw, train_mask, test_mask,
         alpha_pr: float,
@@ -232,6 +278,23 @@ def GNN_features(
     return(ap_score)
 
 #### Optuna objective ####
+def objective_intrinsic(trial):
+    n_layers_decoder = trial.suggest_int('n_layers_decoder', 1, 3)
+    hidden_dim_decoder = trial.suggest_int('hidden_dim_decoder', 5, 20)
+    lr = trial.suggest_float('lr', 0.01, 0.1)
+    n_epochs_decoder = trial.suggest_int('n_epochs_decoder', 5, 500)
+
+    ap_loss = intrinsic_features(
+        ntw, 
+        train_mask, 
+        val_mask,
+        n_layers_decoder, 
+        hidden_dim_decoder, 
+        lr, 
+        n_epochs_decoder
+        )
+    return(ap_loss)
+
 def objective_positional(trial):
     alpha_pr = trial.suggest_float('alpha_pr', 0.1, 0.9)
     alpha_ppr = 0#trial.suggest_float('alpha_ppr', 0.1, 0.9)
@@ -447,20 +510,31 @@ if __name__ == "__main__":
     #ntw = load_cora()
     train_mask, val_mask, test_mask = ntw.get_masks()
 
+    ### Train intrinsic features ###
+    print("intrinsic: ")
+    study = optuna.create_study(direction='maximize')
+    study.optimize(objective_intrinsic, n_trials=100)
+    intrinsic_params = study.best_params
+    intrinsic_values = study.best_value
+    with open("misc/intrinsic_params.txt", "w") as f:
+        f.write(str(intrinsic_params))
+        f.write("\n")
+        f.write("AUC-PRC: "+str(intrinsic_values))
+
     ### Train positional features ###
     fraud_dict = ntw.get_fraud_dict()
     fraud_dict = {k: 0 if v == 2 else v for k, v in fraud_dict.items()}
     
     ## Train positional features
     print("positional: ")
-    #study = optuna.create_study(direction='maximize')
-    #study.optimize(objective_positional, n_trials=100)
-    #positional_params = study.best_params
-    #positional_values = study.best_value
-    #with open("misc/positional_params.txt", "w") as f:
-    #    f.write(str(positional_params))
-    #    f.write("\n")
-    #    f.write("AUC-PRC: "+str(positional_values))
+    study = optuna.create_study(direction='maximize')
+    study.optimize(objective_positional, n_trials=100)
+    positional_params = study.best_params
+    positional_values = study.best_value
+    with open("misc/positional_params.txt", "w") as f:
+        f.write(str(positional_params))
+        f.write("\n")
+        f.write("AUC-PRC: "+str(positional_values))
     
     ### Train Torch ###
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
@@ -475,25 +549,25 @@ if __name__ == "__main__":
 
     ## Train deepwalk
     print("deepwalk: ")
-    #study = optuna.create_study(direction='maximize')
-    #study.optimize(objective_deepwalk, n_trials=50)
-    #deepwalk_params = study.best_params
-    #deepwalk_values = study.best_value
-    #with open("misc/deepwalk_params.txt", "w") as f:
-    #    f.write(str(deepwalk_params))
-    #    f.write("\n")
-    #    f.write("AUC-PRC: "+str(deepwalk_values))
+    study = optuna.create_study(direction='maximize')
+    study.optimize(objective_deepwalk, n_trials=50)
+    deepwalk_params = study.best_params
+    deepwalk_values = study.best_value
+    with open("misc/deepwalk_params.txt", "w") as f:
+        f.write(str(deepwalk_params))
+        f.write("\n")
+        f.write("AUC-PRC: "+str(deepwalk_values))
 
     ## Train node2vec 
     print("node2vec: ")
-    #study = optuna.create_study(direction='maximize')
-    #study.optimize(objective_node2vec, n_trials=50)
-    #node2vec_params = study.best_params
-    #node2vec_values = study.best_value
-    #with open("misc/node2vec_params.txt", "w") as f:
-    #    f.write(str(node2vec_params))
-    #    f.write("\n")
-    #    f.write("AUC-PRC: "+str(node2vec_values))
+    study = optuna.create_study(direction='maximize')
+    study.optimize(objective_node2vec, n_trials=50)
+    node2vec_params = study.best_params
+    node2vec_values = study.best_value
+    with open("misc/node2vec_params.txt", "w") as f:
+        f.write(str(node2vec_params))
+        f.write("\n")
+        f.write("AUC-PRC: "+str(node2vec_values))
 
     ### Train LINE ###
     print("LINE: ")
@@ -505,8 +579,6 @@ if __name__ == "__main__":
         f.write(str(line_params))
         f.write("\n")
         f.write("AUC-PRC: "+str(line_values))
-
-    exit()
 
     ### Train GNN ###
     ## GCN                

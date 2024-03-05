@@ -184,10 +184,6 @@ if __name__ == "__main__":
     train_mask, val_mask, test_mask = ntw.get_masks()
     train_mask = torch.logical_or(train_mask, val_mask).detach()
 
-    ### Positional features ###
-    fraud_dict = ntw.get_fraud_dict()
-    fraud_dict = {k: 0 if v == 2 else v for k, v in fraud_dict.items()}
-    
     device_decoder = (
         "cuda"
         if torch.cuda.is_available()
@@ -195,6 +191,38 @@ if __name__ == "__main__":
         if torch.backends.mps.is_available()
         else "cpu"
     )
+
+    ### Intrinsic features ###
+    print("Intrinsic features")
+    with open("misc/intrinsic_params.txt", "r") as f:
+        params = f.readlines()
+    string_dict = params[0].strip()
+    param_dict = eval(string_dict)
+
+    columns = [i for i in range(2, 95)]
+    X = ntw.df_features[columns]
+    y = ntw.df_features['class']
+
+    X_train = X[train_mask.numpy()]
+    y_train = y[train_mask.numpy()]
+
+    X_test = X[test_mask.numpy()]
+    y_test = y[test_mask.numpy()]
+
+    X_train = torch.tensor(X_train.values, dtype=torch.float32).to(device_decoder)
+    y_train = torch.tensor(y_train.values, dtype=torch.long).to(device_decoder)
+
+    X_test = torch.tensor(X_test.values, dtype=torch.float32).to(device_decoder)
+    y_test = torch.tensor(y_test.values, dtype=torch.long).to(device_decoder)
+
+    model_trained = train_model_shallow(X_train, y_train, param_dict["n_epochs_decoder"], param_dict["lr"], n_layers_decoder=param_dict["n_layers_decoder"], hidden_dim_decoder=param_dict["hidden_dim_decoder"], device_decoder=device_decoder)
+
+    AUC_list_intr, AP_list_intr, precision_list_intr, recall_list_intr, F1_list_intr = evaluate_model_shallow(model_trained, X_test, y_test, device=device_decoder)
+    save_results(AUC_list_intr, AP_list_intr, precision_list_intr, recall_list_intr, F1_list_intr, "intrinsic")
+
+    ### Positional features ###
+    fraud_dict = ntw.get_fraud_dict()
+    fraud_dict = {k: 0 if v == 2 else v for k, v in fraud_dict.items()}
 
     print("Positional features")
     with open("misc/positional_params.txt", "r") as f:
