@@ -47,7 +47,7 @@ def positional_features_calc(
     return features_df
 
 def train_model_shallow(x_train, y_train , n_epochs_decoder, lr,
-                        n_layers_decoder=2, hidden_dim_decoder=5, device_decoder="cpu"):
+                        n_layers_decoder=2, hidden_dim_decoder=10, device_decoder="cpu"):
     decoder = Decoder_deep_norm(x_train.shape[1], n_layers_decoder, hidden_dim_decoder).to(device_decoder)
 
     optimizer = torch.optim.Adam(decoder.parameters(), lr=lr)

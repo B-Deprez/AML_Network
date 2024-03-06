@@ -116,7 +116,7 @@ def positinal_features(
     return(ap_score)
 
 def node2vec_features(
-        ntw_torch, x_intrinsic, train_mask, test_mask,
+        ntw_torch, train_mask, test_mask,
         embedding_dim, 
         walk_length, 
         context_size,
@@ -154,7 +154,7 @@ def node2vec_features(
     model_n2v.eval()
     x = model_n2v()
     x = x.detach()
-    x = torch.cat((x, x_intrinsic), 1)
+    x = torch.cat((x, ntw_torch.x), 1) # Concatenate node2vec and intrinsic features
 
     x_train = x[train_mask].to(device_decoder).squeeze()
     x_test = x[test_mask].to(device_decoder).squeeze()
@@ -162,7 +162,7 @@ def node2vec_features(
     y_train = ntw_torch.y[train_mask].to(device_decoder).squeeze()
     y_test = ntw_torch.y[test_mask].to(device_decoder).squeeze()
 
-    decoder = Decoder_deep_norm(x_train.shape[1], 2, 5).to(device_decoder)
+    decoder = Decoder_deep_norm(x_train.shape[1], 2, 10).to(device_decoder)
 
     optimizer = torch.optim.Adam(decoder.parameters(), lr=lr)
     criterion = nn.CrossEntropyLoss()
@@ -323,7 +323,6 @@ def objective_deepwalk(trial):
 
     ap_loss = node2vec_features(
         ntw_torch, 
-        x_intrinsic,
         train_mask, 
         val_mask,
         embedding_dim, 
@@ -355,7 +354,6 @@ def objective_node2vec(trial):
 
     ap_loss = node2vec_features(
         ntw_torch, 
-        x_intrinsic,
         train_mask, 
         val_mask,
         embedding_dim, 
@@ -533,14 +531,12 @@ if __name__ == "__main__":
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
     ntw_torch = ntw.get_network_torch()
-    ntw_torch.x = ntw_torch.x[:,1:]
+    ntw_torch.x = ntw_torch.x[:,1:94] # Remove time_step and summary features
     edge_index = ntw_torch.edge_index
     num_features = ntw_torch.num_features
     num_classes = 3
     output_dim = 2
     batch_size=128
-
-    x_intrinsic = ntw.get_features_torch()
 
     ## Train deepwalk
     print("deepwalk: ")
@@ -566,14 +562,14 @@ if __name__ == "__main__":
 
     ### Train LINE ###
     print("LINE: ")
-    study = optuna.create_study(direction='maximize')
-    study.optimize(objective_line, n_trials=50)
-    line_params = study.best_params
-    line_values = study.best_value
-    with open("misc/line_params.txt", "w") as f:
-        f.write(str(line_params))
-        f.write("\n")
-        f.write("AUC-PRC: "+str(line_values))
+    #study = optuna.create_study(direction='maximize')
+    #study.optimize(objective_line, n_trials=50)
+    #line_params = study.best_params
+    #line_values = study.best_value
+    #with open("misc/line_params.txt", "w") as f:
+    #    f.write(str(line_params))
+    #    f.write("\n")
+    #    f.write("AUC-PRC: "+str(line_values))
 
     ### Train GNN ###
     ## GCN                
