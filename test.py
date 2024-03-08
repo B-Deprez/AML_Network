@@ -74,12 +74,17 @@ def stratified_sampling(x_test, y_test):
     x_new, y_new = resample(x_test, y_test, n_samples=n_samples, stratify=y_test)
     return(x_new, y_new)
 
-def evaluate_model_shallow(model, x_test, y_test, percentile_q = 99, n_samples=1000, device = "cpu"):
+def evaluate_model_shallow(model, x_test, y_test, percentile_q_list = [99], n_samples=1000, device = "cpu"):
     AUC_list = []
     AP_list = []
-    precision_list = []
-    recall_list = []
-    F1_list = []
+    
+    precision_dict = dict()
+    recall_dict = dict()
+    F1_dict = dict()
+    for percentile_q in percentile_q_list:
+        precision_dict[percentile_q] = []
+        recall_dict[percentile_q] = []
+        F1_dict[percentile_q] = []
 
     model.eval()
 
@@ -92,19 +97,21 @@ def evaluate_model_shallow(model, x_test, y_test, percentile_q = 99, n_samples=1
         AUC = roc_auc_score(y_new.cpu().detach().numpy(), y_pred.cpu().detach().numpy()[:,1])
         AP = average_precision_score(y_new.cpu().detach().numpy(), y_pred.cpu().detach().numpy()[:,1])
 
-        cutoff = np.percentile(y_pred.cpu().detach().numpy()[:,1], percentile_q)
-        y_pred = (y_pred[:,1] >= cutoff)*1
-        precision = precision_score(y_new.cpu().detach().numpy(), y_pred.cpu().detach().numpy())
-        recall = recall_score(y_new.cpu().detach().numpy(), y_pred.cpu().detach().numpy())
-        F1 = f1_score(y_new.cpu().detach().numpy(), y_pred.cpu().detach().numpy())
-
         AUC_list.append(AUC)
         AP_list.append(AP)
-        precision_list.append(precision)
-        recall_list.append(recall)
-        F1_list.append(F1)
 
-    return(AUC_list, AP_list, precision_list, recall_list, F1_list)
+        for percentile_q in percentile_q_list:
+            cutoff = np.percentile(y_pred.cpu().detach().numpy()[:,1], percentile_q)
+            y_pred = (y_pred[:,1] >= cutoff)*1
+            precision = precision_score(y_new.cpu().detach().numpy(), y_pred.cpu().detach().numpy())
+            recall = recall_score(y_new.cpu().detach().numpy(), y_pred.cpu().detach().numpy())
+            F1 = f1_score(y_new.cpu().detach().numpy(), y_pred.cpu().detach().numpy())
+
+            precision_dict[percentile_q].append(precision)
+            recall_dict[percentile_q].append(recall)
+            F1_dict[percentile_q].append(F1)
+
+    return(AUC_list, AP_list, precision_dict, recall_dict, F1_dict)
 
 def resample_testmask(test_mask, p=0.5):
     sample_size = int(np.floor(test_mask.sum()*p))
@@ -135,12 +142,17 @@ def subsample_true_values_tensor(test_mask, p=0.5):
 
     return output_tensor
 
-def evaluate_model_deep(model, test_mask, percentile_q = 99, n_samples=1000, device = "cpu", loader = None):
+def evaluate_model_deep(model, test_mask, percentile_q_list = [99], n_samples=1000, device = "cpu", loader = None):
     AUC_list = []
     AP_list = []
-    precision_list = []
-    recall_list = []
-    F1_list = []
+
+    precision_dict = dict()
+    recall_dict = dict()
+    F1_dict = dict()
+    for percentile_q in percentile_q_list:
+        precision_dict[percentile_q] = []
+        recall_dict[percentile_q] = []
+        F1_dict[percentile_q] = []
 
     model.eval()
 
@@ -162,28 +174,43 @@ def evaluate_model_deep(model, test_mask, percentile_q = 99, n_samples=1000, dev
         AUC = roc_auc_score(y.cpu().detach().numpy(), y_hat.cpu().detach().numpy()[:,1])
         AP = average_precision_score(y.cpu().detach().numpy(), y_hat.cpu().detach().numpy()[:,1])
 
-        cutoff = np.percentile(y_hat.cpu().detach().numpy()[:,1], percentile_q)
-        y_hat = (y_hat[:,1] >= cutoff)*1
-        precision = precision_score(y.cpu().detach().numpy(), y_hat.cpu().detach().numpy())
-        recall = recall_score(y.cpu().detach().numpy(), y_hat.cpu().detach().numpy())
-        F1 = f1_score(y.cpu().detach().numpy(), y_hat.cpu().detach().numpy())
-
         AUC_list.append(AUC)
         AP_list.append(AP)
-        precision_list.append(precision)
-        recall_list.append(recall)
-        F1_list.append(F1)
 
-    return(AUC_list, AP_list, precision_list, recall_list, F1_list)
+        for percentile_q in percentile_q_list:
+            cutoff = np.percentile(y_hat.cpu().detach().numpy()[:,1], percentile_q)
+            y_hat = (y_hat[:,1] >= cutoff)*1
+            precision = precision_score(y.cpu().detach().numpy(), y_hat.cpu().detach().numpy())
+            recall = recall_score(y.cpu().detach().numpy(), y_hat.cpu().detach().numpy())
+            F1 = f1_score(y.cpu().detach().numpy(), y_hat.cpu().detach().numpy())
 
-def save_results(AUC_list, AP_list, precision_list, recall_list, F1_list, model_name):
-    dict = {'AUC': AUC_list, 'AP': AP_list, 'precision': precision_list, 'recall': recall_list, 'F1': F1_list}
-    df = pd.DataFrame(dict)
-    df.to_csv('misc/'+model_name+'.csv')
+            precision_dict[percentile_q].append(precision)
+            recall_dict[percentile_q].append(recall)
+            F1_dict[percentile_q].append(F1)
+
+    return(AUC_list, AP_list, precision_dict, recall_dict, F1_dict)
+
+def save_results_TI(AUC_list, AP_list, model_name):
+    res_dict = {'AUC': AUC_list, 'AP': AP_list}
+    df = pd.DataFrame(res_dict)
+    df.to_csv('misc/'+model_name+'_TI.csv')
+
+def save_results_TD(precision_dict, recall_dict, F1_dict, model_name):
+    res_dict = dict()
+    for key in precision_dict.keys():
+        res_dict['precision_'+str(key)] = precision_dict[key]
+        res_dict['recall_'+str(key)] = recall_dict[key]
+        res_dict['F1_'+str(key)] = F1_dict[key]
+    
+    df = pd.DataFrame(res_dict)
+    df.to_csv('misc/'+model_name+'_TD.csv')
 
 if __name__ == "__main__":
     ntw = load_elliptic()
     #ntw = load_cora()
+
+    percentile_q_list = [90, 99, 99.9]
+
     train_mask, val_mask, test_mask = ntw.get_masks()
     train_mask = torch.logical_or(train_mask, val_mask).detach()
 
@@ -206,8 +233,9 @@ if __name__ == "__main__":
 
     model_trained = train_model_shallow(X_train, y_train, param_dict["n_epochs_decoder"], param_dict["lr"], n_layers_decoder=param_dict["n_layers_decoder"], hidden_dim_decoder=param_dict["hidden_dim_decoder"], device_decoder=device_decoder)
 
-    AUC_list_intr, AP_list_intr, precision_list_intr, recall_list_intr, F1_list_intr = evaluate_model_shallow(model_trained, X_test, y_test, device=device_decoder)
-    save_results(AUC_list_intr, AP_list_intr, precision_list_intr, recall_list_intr, F1_list_intr, "intrinsic")
+    AUC_list_intr, AP_list_intr, precision_dict_intr, recall_dict_intr, F1_dict_intr = evaluate_model_shallow(model_trained, X_test, y_test, percentile_q_list=percentile_q_list, device=device_decoder)
+    save_results_TI(AUC_list_intr, AP_list_intr, "intrinsic")
+    save_results_TD(precision_dict_intr, recall_dict_intr, F1_dict_intr, "intrinsic")
 
     ### Positional features ###
     x_intrinsic = ntw.get_features_torch()
@@ -248,9 +276,10 @@ if __name__ == "__main__":
         hidden_dim_decoder=param_dict["hidden_dim_decoder"],
         device_decoder=device_decoder
     )
-    AUC_list_pos, AP_list_pos, precision_list_pos, recall_list_pos, F1_list_pos = evaluate_model_shallow(model_trained, x_test, y_test, device=device_decoder)
-    save_results(AUC_list_pos, AP_list_pos, precision_list_pos, recall_list_pos, F1_list_pos, "positional")
-    
+    AUC_list_pos, AP_list_pos, precision_dict_pos, recall_dict_pos, F1_dict_pos = evaluate_model_shallow(model_trained, x_test, y_test, percentile_q_list=percentile_q_list, device=device_decoder)
+    save_results_TI(AUC_list_pos, AP_list_pos, "positional")
+    save_results_TD(precision_dict_pos, recall_dict_pos, F1_dict_pos, "positional")
+    #exit()
     #### Troch models ####
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
@@ -293,8 +322,9 @@ if __name__ == "__main__":
     y_test = ntw_torch.y[test_mask].to(device_decoder).squeeze()
 
     model_trained = train_model_shallow(x_train, y_train, param_dict["n_epochs_decoder"], param_dict["lr"], device_decoder=device_decoder)
-    AUC_list_dw, AP_list_dw, precision_list_dw, recall_list_dw, F1_list_dw = evaluate_model_shallow(model_trained, x_test, y_test, device=device_decoder)
-    save_results(AUC_list_dw, AP_list_dw, precision_list_dw, recall_list_dw, F1_list_dw, "deepwalk")
+    AUC_list_dw, AP_list_dw, precision_dict_dw, recall_dict_dw, F1_dict_dw = evaluate_model_shallow(model_trained, x_test, y_test, percentile_q_list=percentile_q_list, device=device_decoder)
+    save_results_TI(AUC_list_dw, AP_list_dw, "deepwalk")
+    save_results_TD(precision_dict_dw, recall_dict_dw, F1_dict_dw, "deepwalk")
 
     ## node2vec
     print("Node2vec")
@@ -327,8 +357,9 @@ if __name__ == "__main__":
     y_test = ntw_torch.y[test_mask].to(device_decoder).squeeze()
 
     model_trained = train_model_shallow(x_train, y_train, param_dict["n_epochs_decoder"], param_dict["lr"], device_decoder=device_decoder)
-    AUC_list_n2v, AP_list_n2v, precision_list_n2v, recall_list_n2v, F1_list_n2v = evaluate_model_shallow(model_trained, x_test, y_test, device=device_decoder)
-    save_results(AUC_list_n2v, AP_list_n2v, precision_list_n2v, recall_list_n2v, F1_list_n2v, "node2vec")
+    AUC_list_n2v, AP_list_n2v, precision_dict_n2v, recall_dict_n2v, F1_dict_n2v = evaluate_model_shallow(model_trained, x_test, y_test, percentile_q_list=percentile_q_list, device=device_decoder)
+    save_results_TI(AUC_list_n2v, AP_list_n2v, "node2vec")
+    save_results_TD(precision_dict_n2v, recall_dict_n2v, F1_dict_n2v, "node2vec")
 
     ## line 
 
@@ -353,8 +384,9 @@ if __name__ == "__main__":
     ).to(device)
 
     train_model_deep(ntw_torch, model_GCN, train_mask, n_epochs, lr, batch_size, loader = None)
-    AUC_list_gcn, AP_list_gcn, precision_list_gcn, recall_list_gcn, F1_list_gcn = evaluate_model_deep(model_GCN, test_mask, n_samples=1000, device = device)
-    save_results(AUC_list_gcn, AP_list_gcn, precision_list_gcn, recall_list_gcn, F1_list_gcn, "gcn")
+    AUC_list_gcn, AP_list_gcn, precision_dict_gcn, recall_dict_gcn, F1_dict_gcn = evaluate_model_deep(model_GCN, test_mask, percentile_q_list=percentile_q_list, n_samples=1000, device = device)
+    save_results_TI(AUC_list_gcn, AP_list_gcn, "gcn")
+    save_results_TD(precision_dict_gcn, recall_dict_gcn, F1_dict_gcn, "gcn")
 
     #GraphSAGE
     print("GraphSAGE")
@@ -398,8 +430,9 @@ if __name__ == "__main__":
     )
 
     train_model_deep(ntw_torch, model_sage, train_mask, n_epochs, lr, batch_size, loader = train_loader)
-    AUC_list_sage, AP_list_sage, precision_list_sage, recall_list_sage, F1_list_sage = evaluate_model_deep(model_sage, test_mask, n_samples=1000, device = device, loader=test_loader)
-    save_results(AUC_list_sage, AP_list_sage, precision_list_sage, recall_list_sage, F1_list_sage, "sage")
+    AUC_list_sage, AP_list_sage, precision_dict_sage, recall_dict_sage, F1_dict_sage = evaluate_model_deep(model_sage, test_mask, percentile_q_list=percentile_q_list, n_samples=1000, device = device, loader=test_loader)
+    save_results_TI(AUC_list_sage, AP_list_sage, "sage")
+    save_results_TD(precision_dict_sage, recall_dict_sage, F1_dict_sage, "sage")
 
     # GAT
     print("GAT")
@@ -422,8 +455,9 @@ if __name__ == "__main__":
     ).to(device)
 
     train_model_deep(ntw_torch, model_gat, train_mask, n_epochs, lr, batch_size, loader = None)
-    AUC_list_gat, AP_list_gat, precision_list_gat, recall_list_gat, F1_list_gat = evaluate_model_deep(model_gat, test_mask, n_samples=1000, device = device)
-    save_results(AUC_list_gat, AP_list_gat, precision_list_gat, recall_list_gat, F1_list_gat, "gat")
+    AUC_list_gat, AP_list_gat, precision_dict_gat, recall_dict_gat, F1_dict_gat = evaluate_model_deep(model_gat, test_mask, percentile_q_list=percentile_q_list, n_samples=1000, device = device)
+    save_results_TI(AUC_list_gat, AP_list_gat, "gat")
+    save_results_TD(precision_dict_gat, recall_dict_gat, F1_dict_gat, "gat")
 
     # GIN
     print("GIN")
@@ -445,5 +479,6 @@ if __name__ == "__main__":
     ).to(device)
 
     train_model_deep(ntw_torch, model_gin, train_mask, n_epochs, lr, batch_size, loader = None)
-    AUC_list_gin, AP_list_gin, precision_list_gin, recall_list_gin, F1_list_gin = evaluate_model_deep(model_gin, test_mask, n_samples=1000, device = device)
-    save_results(AUC_list_gin, AP_list_gin, precision_list_gin, recall_list_gin, F1_list_gin, "gin")
+    AUC_list_gin, AP_list_gin, precision_dict_gin, recall_dict_gin, F1_dict_gin = evaluate_model_deep(model_gin, test_mask, percentile_q_list=percentile_q_list, n_samples=1000, device = device)
+    save_results_TI(AUC_list_gin, AP_list_gin, "gin")
+    save_results_TD(precision_dict_gin, recall_dict_gin, F1_dict_gin, "gin")
