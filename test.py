@@ -102,10 +102,10 @@ def evaluate_model_shallow(model, x_test, y_test, percentile_q_list = [99], n_sa
 
         for percentile_q in percentile_q_list:
             cutoff = np.percentile(y_pred.cpu().detach().numpy()[:,1], percentile_q)
-            y_pred = (y_pred[:,1] >= cutoff)*1
-            precision = precision_score(y_new.cpu().detach().numpy(), y_pred.cpu().detach().numpy())
-            recall = recall_score(y_new.cpu().detach().numpy(), y_pred.cpu().detach().numpy())
-            F1 = f1_score(y_new.cpu().detach().numpy(), y_pred.cpu().detach().numpy())
+            y_pred_hard = (y_pred[:,1] >= cutoff)*1
+            precision = precision_score(y_new.cpu().detach().numpy(), y_pred_hard.cpu().detach().numpy())
+            recall = recall_score(y_new.cpu().detach().numpy(), y_pred_hard.cpu().detach().numpy())
+            F1 = f1_score(y_new.cpu().detach().numpy(), y_pred_hard.cpu().detach().numpy())
 
             precision_dict[percentile_q].append(precision)
             recall_dict[percentile_q].append(recall)
@@ -179,10 +179,10 @@ def evaluate_model_deep(model, test_mask, percentile_q_list = [99], n_samples=10
 
         for percentile_q in percentile_q_list:
             cutoff = np.percentile(y_hat.cpu().detach().numpy()[:,1], percentile_q)
-            y_hat = (y_hat[:,1] >= cutoff)*1
-            precision = precision_score(y.cpu().detach().numpy(), y_hat.cpu().detach().numpy())
-            recall = recall_score(y.cpu().detach().numpy(), y_hat.cpu().detach().numpy())
-            F1 = f1_score(y.cpu().detach().numpy(), y_hat.cpu().detach().numpy())
+            y_hat_hard = (y_hat[:,1] >= cutoff)*1
+            precision = precision_score(y.cpu().detach().numpy(), y_hat_hard.cpu().detach().numpy())
+            recall = recall_score(y.cpu().detach().numpy(), y_hat_hard.cpu().detach().numpy())
+            F1 = f1_score(y.cpu().detach().numpy(), y_hat_hard.cpu().detach().numpy())
 
             precision_dict[percentile_q].append(precision)
             recall_dict[percentile_q].append(recall)
@@ -230,6 +230,9 @@ if __name__ == "__main__":
     param_dict = eval(string_dict)
 
     X_train, y_train, X_test, y_test = ntw.get_train_test_split_intrinsic(train_mask, test_mask, device=device_decoder)
+
+    percentage_labels = torch.mean(y_train.float()).item()
+    percentile_q_list.append((1-percentage_labels)*100)
 
     model_trained = train_model_shallow(X_train, y_train, param_dict["n_epochs_decoder"], param_dict["lr"], n_layers_decoder=param_dict["n_layers_decoder"], hidden_dim_decoder=param_dict["hidden_dim_decoder"], device_decoder=device_decoder)
 
