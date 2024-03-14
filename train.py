@@ -50,7 +50,7 @@ def intrinsic_features(
     ap_score = average_precision_score(y_test.cpu().detach().numpy(), y_pred.cpu().detach().numpy()[:,1])
     return(ap_score)
 
-def positinal_features(
+def positional_features(
         ntw, train_mask, test_mask,
         alpha_pr: float,
         alpha_ppr: float,
@@ -207,6 +207,7 @@ def LINE_features(
 
     x = model_LINE()
     x = x.detach()
+    x = torch.cat((x, ntw_torch.x), 1) # Concatenate node2vec and intrinsic features
 
     x_train = x[train_mask].to(device_decoder).squeeze()
     x_test = x[test_mask].to(device_decoder).squeeze()
@@ -250,7 +251,7 @@ def GNN_features(
         #loss_test = test_GNN(ntw_torch, model, test_mask=test_mask)
     
     model.eval()
-    if test_loader is not None:
+    if test_loader is None:
         out, h = model(ntw_torch.x, ntw_torch.edge_index.to(device))
         if test_mask is None: # If no test_mask is provided, use all data
             y_hat = out
@@ -294,7 +295,7 @@ def objective_positional(trial):
     n_layers_decoder = trial.suggest_int('n_layers_decoder', 1, 3)
     hidden_dim_decoder = trial.suggest_int('hidden_dim_decoder', 5, 20)
 
-    ap_loss = positinal_features(
+    ap_loss = positional_features(
         ntw, 
         train_mask, 
         val_mask,
@@ -311,8 +312,7 @@ def objective_positional(trial):
 def objective_deepwalk(trial):
     embedding_dim = trial.suggest_int('embedding_dim', 2, 64)
     walk_length = trial.suggest_int('walk_length', 3, 10)
-    context_size = trial.suggest_int('context_size', 2, 5)
-    context_size = min(context_size, walk_length-1)
+    context_size = trial.suggest_int('context_size', 2, walk_length)
     walks_per_node = trial.suggest_int('walks_per_node', 1, 3)
     num_negative_samples = trial.suggest_int('num_negative_samples', 1, 5)
     p = 1
@@ -342,8 +342,7 @@ def objective_deepwalk(trial):
 def objective_node2vec(trial):
     embedding_dim = trial.suggest_int('embedding_dim', 2, 64)
     walk_length = trial.suggest_int('walk_length', 3, 10)
-    context_size = trial.suggest_int('context_size', 2, 5)
-    context_size = min(context_size, walk_length-1)
+    context_size = trial.suggest_int('context_size', 2, walk_length)
     walks_per_node = trial.suggest_int('walks_per_node', 1, 3)
     num_negative_samples = trial.suggest_int('num_negative_samples', 1, 5)
     p = trial.suggest_float('p', 0.5, 2)
@@ -453,14 +452,15 @@ def objective_sage(trial):
     return(ap_loss)
 
 def objective_gat(trial):
-    hidden_dim = trial.suggest_int('hidden_dim', 64, 256)
-    embedding_dim = trial.suggest_int('embedding_dim', 32, 128)
-    n_layers = trial.suggest_int('n_layers', 1, 3)
-    dropout_rate = trial.suggest_float('dropout_rate', 0, 0.5)
-    lr = trial.suggest_float('lr', 0.01, 0.1)
-    n_epochs = trial.suggest_int('n_epochs', 5, 500)
+    print('-------------------')
+    hidden_dim = trial.suggest_int('hidden_dim', 64, 256); print("hidden_dim: ", hidden_dim)
+    embedding_dim = trial.suggest_int('embedding_dim', 32, 128); print("embedding_dim: ", embedding_dim)
+    n_layers = trial.suggest_int('n_layers', 1, 3); print("n_layers: ", n_layers)
+    dropout_rate = trial.suggest_float('dropout_rate', 0, 0.5); print("dropout_rate: ", dropout_rate)
+    lr = trial.suggest_float('lr', 0.01, 0.1); print("lr: ", lr)
+    n_epochs = trial.suggest_int('n_epochs', 5, 500); print("n_epochs: ", n_epochs)
 
-    heads = trial.suggest_int("heads", 1, 8)
+    heads = trial.suggest_int("heads", 1, 5); print("heads: ", heads)
 
     model_gat = GAT(
         num_features=num_features,
@@ -505,7 +505,7 @@ if __name__ == "__main__":
     print("intrinsic: ")
     study = optuna.create_study(direction='maximize')
     study.optimize(objective_intrinsic, n_trials=100)
-    intrinsic_params = study.best_params
+    intrinsic_params = study.best_params   
     intrinsic_values = study.best_value
     with open("misc/intrinsic_params.txt", "w") as f:
         f.write(str(intrinsic_params))
