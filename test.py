@@ -282,7 +282,7 @@ if __name__ == "__main__":
     AUC_list_pos, AP_list_pos, precision_dict_pos, recall_dict_pos, F1_dict_pos = evaluate_model_shallow(model_trained, x_test, y_test, percentile_q_list=percentile_q_list, device=device_decoder)
     save_results_TI(AUC_list_pos, AP_list_pos, "positional")
     save_results_TD(precision_dict_pos, recall_dict_pos, F1_dict_pos, "positional")
-    #exit()
+
     #### Troch models ####
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
