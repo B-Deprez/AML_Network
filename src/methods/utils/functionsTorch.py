@@ -5,7 +5,6 @@ import torch.nn as nn
 from torch_geometric.data import Data
 from torch_geometric.loader import DataLoader, NeighborLoader
 from torch_geometric.nn import Node2Vec
-from models.LINE import LINE_w1
 
 def node2vec_representation(G_torch: Data, train_mask: Tensor, test_mask: Tensor,
                             embedding_dim: int = 128,walk_length: int =20,context_size: int =10,walks_per_node: int =10,num_negative_samples: int =1,p: float =1.0,q: float =1.0, #node2vec hyper-parameters
@@ -56,40 +55,6 @@ def node2vec_representation(G_torch: Data, train_mask: Tensor, test_mask: Tensor
     for epoch in range(n_epochs):
         loss = train()
         #acc = test()
-        #print(f'Epoch: {epoch:03d}, Loss: {loss:.4f}, Acc: {acc:.4f}')
-
-    return model
-
-def LINE_representation(G_torch: Data,
-                        embedding_dim:int= 128, num_negative_samples: int=1, #LINE hyper-parameters
-                        batch_size:int =128, lr:float =0.01, n_epochs: int=100, order: int=2): #learning hyper-parameters
-    device = 'cuda' if torch.cuda.is_available() else 'cpu'
-
-    model = LINE_w1(
-        G_torch.edge_index,
-        embedding_dim=embedding_dim,
-        num_negative_samples=num_negative_samples,
-        sparse=True,
-        order=order,
-    ).to(device)
-    
-    loader = model.loader(batch_size=batch_size, shuffle=True, num_workers=0)
-    optimizer = torch.optim.SparseAdam(list(model.parameters()), lr=lr)
-
-    def train():
-        model.train()
-        total_loss = 0
-        for pos_edges, neg_edges in loader:
-            optimizer.zero_grad()
-            loss = model.loss(pos_edges.to(device), neg_edges.to(device))
-            loss.backward()
-            optimizer.step()
-            total_loss += loss.item()
-        return total_loss / len(loader)
-    
-    for epoch in range(n_epochs):
-        loss = train()
-        #acc = 0 
         #print(f'Epoch: {epoch:03d}, Loss: {loss:.4f}, Acc: {acc:.4f}')
 
     return model

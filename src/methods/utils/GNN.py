@@ -3,7 +3,7 @@ from torch import Tensor
 import torch.nn as nn
 import torch.nn.functional as F
 from torch_geometric.nn import GCNConv, GATv2Conv, SAGEConv, GINConv, GINEConv
-from models.decoder import *
+from src.methods.utils.decoder import *
 
 # Look at having hidden_dim and only embedding_dim in final layer
 
