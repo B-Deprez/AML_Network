@@ -186,7 +186,7 @@ def evaluate_model_deep(data, model, test_mask, percentile_q_list = [99], n_samp
 def save_results_TI(AUC_list, AP_list, model_name):
     res_dict = {'AUC': AUC_list, 'AP': AP_list}
     df = pd.DataFrame(res_dict)
-    df.to_csv('misc/'+model_name+'_TI.csv')
+    df.to_csv('res/'+model_name+'_TI.csv')
 
 def save_results_TD(precision_dict, recall_dict, F1_dict, model_name):
     res_dict = dict()
@@ -196,4 +196,4 @@ def save_results_TD(precision_dict, recall_dict, F1_dict, model_name):
         res_dict['F1_'+str(key)] = F1_dict[key]
     
     df = pd.DataFrame(res_dict)
-    df.to_csv('misc/'+model_name+'_TD.csv')
+    df.to_csv('res/'+model_name+'_TD.csv')
