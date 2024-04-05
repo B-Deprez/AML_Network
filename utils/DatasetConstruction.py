@@ -64,21 +64,3 @@ def load_cora(y = 0, p_train = 0.6, p_val = 0.2):
     ntw = network_AML(feat_df, edge_df, train_mask=train_mask, val_mask=val_mask, test_mask=test_mask)
 
     return(ntw)
-
-def load_IBM(p_train = 0.6, p_val = 0.2):
-    raw_path = "./data/IBM/LI-Small_Trans.csv"
-    trans_df = pd.read_csv(raw_path)
-    trans_df["Timestamp"] = pd.to_datetime(trans_df["Timestamp"])
-
-    # Timestamp based split:
-    num_trans = len(trans_df)
-    mask = torch.tensor([False]*num_trans)
-    train_size = int(p_train*num_trans)
-    val_size = int(p_val*num_trans)
-    
-    train_mask = mask.clone()
-    train_mask[:train_size] = True
-    val_mask = mask.clone()
-    val_mask[train_size:train_size+val_size] = True
-    test_mask = mask.clone()
-    test_mask[train_size+val_size:] = True
