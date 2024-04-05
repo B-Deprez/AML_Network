@@ -6,9 +6,9 @@ from utils.Network import network_AML
 #### Elliptic dataset ####
 def load_elliptic():
     raw_paths = [
-        './data/elliptic_bitcoin/raw/elliptic_txs_features.csv',
-        './data/elliptic_bitcoin/raw/elliptic_txs_edgelist.csv',
-        './data/elliptic_bitcoin/raw/elliptic_txs_classes.csv',
+        'data/elliptic_bitcoin/raw/elliptic_txs_features.csv',
+        'data/elliptic_bitcoin/raw/elliptic_txs_edgelist.csv',
+        'data/elliptic_bitcoin/raw/elliptic_txs_classes.csv',
                     ]
     feat_df = pd.read_csv(raw_paths[0], header=None)
     edge_df = pd.read_csv(raw_paths[1])

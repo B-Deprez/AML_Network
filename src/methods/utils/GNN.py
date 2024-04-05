@@ -3,7 +3,7 @@ from torch import Tensor
 import torch.nn as nn
 import torch.nn.functional as F
 from torch_geometric.nn import GCNConv, GATv2Conv, SAGEConv, GINConv, GINEConv
-from models.decoder import *
+from src.methods.utils.decoder import *
 
 # Look at having hidden_dim and only embedding_dim in final layer
 
@@ -295,47 +295,3 @@ class GINE(nn.Module):
         out = self.out(h)
 
         return out, h
-
-# class GNN(nn.Module):
-#     def __init__(self, num_features, num_classes, num_hidden_layers, hidden, dropout, model):
-#         super(GNN, self).__init__()
-#         self.num_features = num_features
-#         self.num_classes = num_classes
-#         self.num_hidden_layers = num_hidden_layers
-#         self.hidden = hidden
-#         self.dropout = dropout
-#         self.model = model
-
-#         self.hidden_layers = nn.ModuleList()
-
-#         if self.model == 'GCN':
-#             self.hidden_layers.append(GCNConv(self.num_features, self.hidden))
-#             for _ in range(self.num_hidden_layers):
-#                 self.hidden_layers.append(GCNConv(self.hidden, self.hidden))
-#             self.hidden_layers.append(GCNConv(self.hidden, self.num_classes))
-            
-#         elif self.model == 'GAT':
-#             self.hidden_layers.append(GATv2Conv(self.num_features, self.hidden, heads=8, dropout=self.dropout))
-#             for _ in range(self.num_hidden_layers):
-#                 self.hidden_layers.append(GATv2Conv(8 * self.hidden, self.hidden, heads=8, dropout=self.dropout))
-#             self.hidden_layers.append(GATv2Conv(8 * self.hidden, self.num_classes, heads=1, concat=False, dropout=self.dropout))
-
-#         elif self.model == 'SAGE':
-#             self.hidden_layers.append(SAGEConv(self.num_features, self.hidden))
-#             for _ in range(self.num_hidden_layers):
-#                 self.hidden_layers.append(SAGEConv(self.hidden, self.hidden))
-#             self.hidden_layers.append(SAGEConv(self.hidden, self.num_classes))
-
-#         elif self.model == 'GIN':
-#             self.conv1 = GINConv(nn.Sequential(nn.Linear(self.num_features, self.hidden), nn.ReLU(), nn.Linear(self.hidden, self.hidden)))
-#             self.conv2 = GINConv(nn.Sequential(nn.Linear(self.hidden, self.hidden), nn.ReLU(), nn.Linear(self.hidden, self.num_classes)))
-#         else:
-#             raise NotImplementedError
-
-#         def forward(self, x, edge_index):
-#             for layer in self.hidden_layers:
-#                 x = F.relu(layer(x))
-#                 x = F.dropout(x, p=self.dropout, training=self.training)
-#             return x
-            
-
