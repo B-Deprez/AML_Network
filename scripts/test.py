@@ -28,7 +28,7 @@ device_decoder = (
 
 ### Intrinsic features ###
 print("Intrinsic features")
-with open("misc/intrinsic_params.txt", "r") as f:
+with open("res/intrinsic_params.txt", "r") as f:
     params = f.readlines()
 string_dict = params[0].strip()
 param_dict = eval(string_dict)
@@ -51,7 +51,7 @@ fraud_dict = ntw.get_fraud_dict()
 fraud_dict = {k: 0 if v == 2 else v for k, v in fraud_dict.items()}
 
 print("Positional features")
-with open("misc/positional_params.txt", "r") as f:
+with open("res/positional_params.txt", "r") as f:
     params = f.readlines()
 string_dict = params[0].strip()
 param_dict = eval(string_dict)
@@ -100,7 +100,7 @@ batch_size=128
 
 ## Deepwalk
 print("Deepwalk")
-with open("misc/deepwalk_params.txt", "r") as f:
+with open("res/deepwalk_params.txt", "r") as f:
     params = f.readlines()
 string_dict = params[0].strip()
 param_dict = eval(string_dict)
@@ -135,7 +135,7 @@ save_results_TD(precision_dict_dw, recall_dict_dw, F1_dict_dw, "deepwalk")
 
 ## node2vec
 print("Node2vec")
-with open("misc/node2vec_params.txt", "r") as f:
+with open("res/node2vec_params.txt", "r") as f:
     params = f.readlines()
 string_dict = params[0].strip()
 param_dict = eval(string_dict)
@@ -172,7 +172,7 @@ save_results_TD(precision_dict_n2v, recall_dict_n2v, F1_dict_n2v, "node2vec")
 
 ## GCN
 print("GCN")
-with open("misc/gcn_params.txt", "r") as f:
+with open("res/gcn_params.txt", "r") as f:
     params = f.readlines()
 string_dict = params[0].strip()
 param_dict = eval(string_dict)
@@ -197,7 +197,7 @@ save_results_TD(precision_dict_gcn, recall_dict_gcn, F1_dict_gcn, "gcn")
 
 #GraphSAGE
 print("GraphSAGE")
-with open("misc/sage_params.txt", "r") as f:
+with open("res/sage_params.txt", "r") as f:
     params = f.readlines()
 string_dict = params[0].strip()
 param_dict = eval(string_dict)
@@ -243,7 +243,7 @@ save_results_TD(precision_dict_sage, recall_dict_sage, F1_dict_sage, "sage")
 
 # GAT
 print("GAT")
-with open("misc/gat_params.txt", "r") as f:
+with open("res/gat_params.txt", "r") as f:
     params = f.readlines()
 string_dict = params[0].strip()
 param_dict = eval(string_dict)
@@ -268,7 +268,7 @@ save_results_TD(precision_dict_gat, recall_dict_gat, F1_dict_gat, "gat")
 
 # GIN
 print("GIN")
-with open("misc/gin_params.txt", "r") as f:
+with open("res/gin_params.txt", "r") as f:
     params = f.readlines()
 string_dict = params[0].strip()
 param_dict = eval(string_dict)
