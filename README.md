@@ -1,4 +1,4 @@
-# Social Network Analytics for Anti-Money Laundering – A Systematic Literature Review and Experimental Evaluation </br><sub><sub> Bruno Depreza, Toon Vanderschueren, Wouter Verbeke, Bart Baesens, Tim Verdonck [[*Outlet Year*]](*url to paper*)</sub></sub>
+# Social Network Analytics for Anti-Money Laundering – A Systematic Literature Review and Experimental Evaluation </br><sub><sub> Bruno Deprez, Toon Vanderschueren, Wouter Verbeke, Bart Baesens, Tim Verdonck [[*Outlet Year*]](*url to paper*)</sub></sub>
 
 The source code of the experimental evaluation of the paper Deprez et al. (nd) - Social Network Analytics for Anti-Money Laundering -- A Systematic Literature Review and Experimental Evaluation.
 
