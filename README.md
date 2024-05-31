@@ -1,4 +1,4 @@
-# Social Network Analytics for Anti-Money Laundering – A Systematic Literature Review and Experimental Evaluation
+# Social Network Analytics for Anti-Money Laundering – A Systematic Literature Review and Experimental Evaluation </br><sub><sub> Bruno Deprez, Toon Vanderschueren, Tim Verdonck, Bart Baesens, Wouter Verbeke [[Preprint]]((https://arxiv.org/abs/2405.19383))</sub></sub>
 [![PWC](https://img.shields.io/endpoint.svg?url=https://paperswithcode.com/badge/network-analytics-for-anti-money-laundering-a/fraud-detection-on-elliptic-dataset)](https://paperswithcode.com/sota/fraud-detection-on-elliptic-dataset?p=network-analytics-for-anti-money-laundering-a)
 
 The source code of the experimental evaluation of the paper *Social Network Analytics for Anti-Money Laundering -- A Systematic Literature Review and Experimental Evaluation*.
