@@ -54,7 +54,7 @@ Please cite our paper and/or code as follows:
 
 @misc{deprez2024network,
       title={Network Analytics for Anti-Money Laundering -- A Systematic Literature Review and Experimental Evaluation}, 
-      author={Bruno Deprez and Toon Vanderschueren and Wouter Verbeke and Bart Baesens and Tim Verdonck},
+      author={Bruno Deprez and Toon Vanderschueren and Bart Baesens and Tim Verdonck and Wouter Verbeke},
       year={2024},
       eprint={2405.19383},
       archivePrefix={arXiv},
