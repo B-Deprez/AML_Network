@@ -45,6 +45,7 @@ def intrinsic_features(
 
     decoder.eval()
     y_pred = decoder(X_test)
+    y_pred = y_pred.softmax(dim=1)
     ap_score = average_precision_score(y_test.cpu().detach().numpy(), y_pred.cpu().detach().numpy()[:,1])
     return(ap_score)
 
@@ -110,6 +111,7 @@ def positional_features(
     
     decoder.eval()
     y_pred = decoder(x_test)
+    y_pred = y_pred.softmax(dim=1)
     ap_score = average_precision_score(y_test.cpu().detach().numpy(), y_pred.cpu().detach().numpy()[:,1])
     return(ap_score)
 
@@ -174,6 +176,7 @@ def node2vec_features(
         optimizer.step()
     decoder.eval()
     y_pred = decoder(x_test)
+    y_pred = y_pred.softmax(dim=1)
     ap_score = average_precision_score(y_test.cpu().detach().numpy(), y_pred.cpu().detach().numpy()[:,1])
     return(ap_score)
 
@@ -210,6 +213,6 @@ def GNN_features(
             out, h = model(batch.x, batch.edge_index)
             y_hat = out[:batch.batch_size]
             y = batch.y[:batch.batch_size]
-    
+    y = y.softmax(dim=1)
     ap_score = average_precision_score(y.cpu().detach().numpy(), y_hat.cpu().detach().numpy()[:,1])
     return(ap_score)

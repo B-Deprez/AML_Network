@@ -86,6 +86,7 @@ def evaluate_model_shallow(model, x_test, y_test, percentile_q_list = [99], n_sa
         x_new = torch.from_numpy(x_new).to(device)
         y_new = torch.from_numpy(y_new).to(device)
         y_pred = model(x_new)
+        y_pred = y_pred.softmax(dim=1)
 
         AUC = roc_auc_score(y_new.cpu().detach().numpy(), y_pred.cpu().detach().numpy()[:,1])
         AP = average_precision_score(y_new.cpu().detach().numpy(), y_pred.cpu().detach().numpy()[:,1])
@@ -163,6 +164,7 @@ def evaluate_model_deep(data, model, test_mask, percentile_q_list = [99], n_samp
             out, h = model(batch.x, batch.edge_index)
             y_hat = out[:batch.batch_size]
             y = batch.y[:batch.batch_size]
+        y  = y.softmax(dim=1) # Get probability of fraud
         
         AUC = roc_auc_score(y.cpu().detach().numpy(), y_hat.cpu().detach().numpy()[:,1])
         AP = average_precision_score(y.cpu().detach().numpy(), y_hat.cpu().detach().numpy()[:,1])
