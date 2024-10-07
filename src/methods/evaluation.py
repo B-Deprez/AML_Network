@@ -155,16 +155,16 @@ def evaluate_model_deep(data, model, test_mask, percentile_q_list = [99], n_samp
         if loader is None:
             model.eval()
             out, h = model(data.x, data.edge_index.to(device))
-            y_hat = out[test_mask_new].to(device)
-            y = data.y[test_mask_new].to(device)
+            y_hat = out[test_mask_new].to(device) # Prediction
+            y = data.y[test_mask_new].to(device) # True value
             
         else:
             batch = next(iter(loader))
             batch = batch.to(device, 'edge_index')
             out, h = model(batch.x, batch.edge_index)
-            y_hat = out[:batch.batch_size]
-            y = batch.y[:batch.batch_size]
-        y  = y.softmax(dim=1) # Get probability of fraud
+            y_hat = out[:batch.batch_size] # Prediction
+            y = batch.y[:batch.batch_size] # True value
+        y_hat  = y_hat.softmax(dim=1) # Get probability of fraud
         
         AUC = roc_auc_score(y.cpu().detach().numpy(), y_hat.cpu().detach().numpy()[:,1])
         AP = average_precision_score(y.cpu().detach().numpy(), y_hat.cpu().detach().numpy()[:,1])
