@@ -7,7 +7,9 @@ import pandas as pd
 
 
 class network_AML():
-    def __init__(self, df_features, df_edges, directed = False, train_mask = None, val_mask = None, test_mask = None, fraud_dict = None):
+    def __init__(self, df_features, df_edges, directed = False, train_mask = None, val_mask = None, test_mask = None, fraud_dict = None, name = None):
+        self.name = name
+        
         self.df_features = df_features
         self.df_edges = df_edges
         self.directed = directed
@@ -96,10 +98,13 @@ class network_AML():
         return(data)
     
     def get_features(self, full=False):
-        if full:
-            columns = [i for i in range(2, 167)]
+        if self.name == 'elliptic':    
+            if full:
+                columns = [i for i in range(2, 167)]
+            else:
+                columns = [i for i in range(2, 95)]
         else:
-            columns = [i for i in range(2, 95)]
+            columns = self.df_features.columns.drop(['txId', 'class'])
         X = self.df_features[columns]
         return(X)
     
