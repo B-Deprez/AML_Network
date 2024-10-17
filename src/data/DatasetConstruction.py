@@ -42,7 +42,7 @@ import os
 def preprocess_ibm():
     date_format = '%Y/%m/%d %H:%M'
 
-    data_df = pd.read_csv('data/IBM/LI-Small_Trans.csv')
+    data_df = pd.read_csv('data/IBM/HI-Small_Trans.csv')
     data_df['Timestamp'] = pd.to_datetime(data_df['Timestamp'], format=date_format)
     data_df.sort_values('Timestamp', inplace=True)
     data_df = data_df[data_df['Account']!= data_df['Account.1']]
@@ -50,7 +50,7 @@ def preprocess_ibm():
     data_df.reset_index(inplace=True)
 
     data_df_accounts = data_df[['index', 'Account', 'Account.1', 'Timestamp']]
-    delta = 12*60 # 12 hours
+    delta = 6*60 # 6 hours
 
     num_obs = len(data_df_accounts)
     pieces = 100
