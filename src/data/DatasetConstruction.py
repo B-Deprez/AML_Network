@@ -31,7 +31,7 @@ def load_elliptic():
     val_mask = (time_step >= 30) & (time_step < 40) & (y != 2) 
     test_mask = (time_step >= 40) & (y != 2)
     
-    ntw = network_AML(feat_df, edge_df, train_mask=train_mask, val_mask=val_mask, test_mask=test_mask)
+    ntw = network_AML(feat_df, edge_df, train_mask=train_mask, val_mask=val_mask, test_mask=test_mask, name='elliptic')
 
     return(ntw)
 
@@ -85,8 +85,28 @@ def load_ibm():
     df_edges = pd.read_csv(path+'/edges.csv')
 
     df_features = pd.read_csv(path+'/LI-Small_Trans.csv')
+    df_features['Timestamp'] = pd.to_datetime(df_features['Timestamp'], format='%Y/%m/%d %H:%M')
+    df_features.sort_values('Timestamp', inplace=True)
+    df_features = df_features[df_features['Account']!= df_features['Account.1']]
+    df_features.reset_index(drop=True, inplace=True)
+    df_features.reset_index(inplace=True)
+
     df_features.columns = ['txId', 'Timestamp', 'From Bank', 'Account', 'To Bank', 'Account.1', 'Amount Received', 'Receiving Currency', 'Amount Paid', 'Payment Currency', 'Payment Format', 'class']
     df_features = df_features[['txId', 'Timestamp', 'Amount Received', 'Receiving Currency', 'Amount Paid', 'Payment Currency', 'Payment Format', 'class']]
+
+    list_day = []
+    list_hour = []
+    list_minute = []
+    for date in list(df_features['Timestamp']):
+        list_day.append(date.day)
+        list_hour.append(date.hour)
+        list_minute.append(date.minute)
+    df_features['Day'] = list_day
+    df_features['Hour'] = list_hour
+    df_features['Minute'] = list_minute
+
+    df_features = df_features.drop(columns=['Timestamp'])
+    df_features = pd.get_dummies(df_features, columns=['Receiving Currency', 'Payment Currency', 'Payment Format'])
 
     # Timestamp based split:
     mask = torch.tensor([False]*df_features.shape[0])
@@ -100,7 +120,7 @@ def load_ibm():
     test_mask = mask.clone()
     test_mask[train_size+val_size:] = True
 
-    ntw = network_AML(df_features, df_edges, train_mask=train_mask, val_mask=val_mask, test_mask=test_mask)
+    ntw = network_AML(df_features, df_edges, train_mask=train_mask, val_mask=val_mask, test_mask=test_mask, name='ibm')
 
     return(ntw)
 
@@ -129,6 +149,6 @@ def load_cora(y = 0, p_train = 0.6, p_val = 0.2):
     edge_df.columns = ['txId1', 'txId2']
     feat_df["class"] = (data.y.detach().numpy()==1)*1
 
-    ntw = network_AML(feat_df, edge_df, train_mask=train_mask, val_mask=val_mask, test_mask=test_mask)
+    ntw = network_AML(feat_df, edge_df, train_mask=train_mask, val_mask=val_mask, test_mask=test_mask, name='cora')
 
     return(ntw)
