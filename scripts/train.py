@@ -227,31 +227,46 @@ if __name__ == "__main__":
 
     train_mask, val_mask, test_mask = ntw.get_masks()
 
+    to_train = [
+        "intrinsic",
+        "positional",
+        "deepwalk",
+        "node2vec",
+        "gcn",
+        "sage",
+        "gat",
+        "gin"
+    ]
+
     ### Train intrinsic features ###
-    print("intrinsic: ")
-    study = optuna.create_study(direction='maximize')
-    study.optimize(objective_intrinsic, n_trials=2)
-    intrinsic_params = study.best_params   
-    intrinsic_values = study.best_value
-    with open("res/intrinsic_params_"+ntw_name+".txt", "w") as f:
-        f.write(str(intrinsic_params))
-        f.write("\n")
-        f.write("AUC-PRC: "+str(intrinsic_values))
+    if "intrinsic" in to_train:
+        print("="*10)
+        print("intrinsic: ")
+        study = optuna.create_study(direction='maximize')
+        study.optimize(objective_intrinsic, n_trials=100)
+        intrinsic_params = study.best_params   
+        intrinsic_values = study.best_value
+        with open("res/intrinsic_params_"+ntw_name+".txt", "w") as f:
+            f.write(str(intrinsic_params))
+            f.write("\n")
+            f.write("AUC-PRC: "+str(intrinsic_values))
 
     ### Train positional features ###
     fraud_dict = ntw.get_fraud_dict()
     fraud_dict = {k: 0 if v == 2 else v for k, v in fraud_dict.items()}
 
     ## Train positional features
-    print("positional: ")
-    study = optuna.create_study(direction='maximize')
-    study.optimize(objective_positional, n_trials=2)
-    positional_params = study.best_params
-    positional_values = study.best_value
-    with open("res/positional_params_"+ntw_name+".txt", "w") as f:
-        f.write(str(positional_params))
-        f.write("\n")
-        f.write("AUC-PRC: "+str(positional_values))
+    if "positional" in to_train:
+        print("="*10)
+        print("positional: ")
+        study = optuna.create_study(direction='maximize')
+        study.optimize(objective_positional, n_trials=100)
+        positional_params = study.best_params
+        positional_values = study.best_value
+        with open("res/positional_params_"+ntw_name+".txt", "w") as f:
+            f.write(str(positional_params))
+            f.write("\n")
+            f.write("AUC-PRC: "+str(positional_values))
 
     ### Train Torch ###
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
@@ -265,68 +280,80 @@ if __name__ == "__main__":
     batch_size=128
 
     ## Train deepwalk
-    print("deepwalk: ")
-    study = optuna.create_study(direction='maximize')
-    study.optimize(objective_deepwalk, n_trials=2)
-    deepwalk_params = study.best_params
-    deepwalk_values = study.best_value
-    with open("res/deepwalk_params_"+ntw_name+".txt", "w") as f:
-        f.write(str(deepwalk_params))
-        f.write("\n")
-        f.write("AUC-PRC: "+str(deepwalk_values))
+    if "deepwalk" in to_train:
+        print("="*10)
+        print("deepwalk: ")
+        study = optuna.create_study(direction='maximize')
+        study.optimize(objective_deepwalk, n_trials=100)
+        deepwalk_params = study.best_params
+        deepwalk_values = study.best_value
+        with open("res/deepwalk_params_"+ntw_name+".txt", "w") as f:
+            f.write(str(deepwalk_params))
+            f.write("\n")
+            f.write("AUC-PRC: "+str(deepwalk_values))
 
     ## Train node2vec 
-    print("node2vec: ")
-    study = optuna.create_study(direction='maximize')
-    study.optimize(objective_node2vec, n_trials=2)
-    node2vec_params = study.best_params
-    node2vec_values = study.best_value
-    with open("res/node2vec_params_"+ntw_name+".txt", "w") as f:
-        f.write(str(node2vec_params))
-        f.write("\n")
-        f.write("AUC-PRC: "+str(node2vec_values))
+    if "node2vec" in to_train:
+        print("="*10)
+        print("node2vec: ")
+        study = optuna.create_study(direction='maximize')
+        study.optimize(objective_node2vec, n_trials=100)
+        node2vec_params = study.best_params
+        node2vec_values = study.best_value
+        with open("res/node2vec_params_"+ntw_name+".txt", "w") as f:
+            f.write(str(node2vec_params))
+            f.write("\n")
+            f.write("AUC-PRC: "+str(node2vec_values))
 
     ### Train GNN ###
-    ## GCN                
-    print("GCN: ")
-    study = optuna.create_study(direction='maximize')
-    study.optimize(objective_gcn, n_trials=2)
-    gcn_params = study.best_params
-    gcn_values = study.best_value
-    with open("res/gcn_params_"+ntw_name+".txt", "w") as f:
-        f.write(str(gcn_params))
-        f.write("\n")
-        f.write("AUC-PRC: "+str(gcn_values))
+    ## GCN     
+    if "gcn" in to_train:     
+        print("="*10)      
+        print("GCN: ")
+        study = optuna.create_study(direction='maximize')
+        study.optimize(objective_gcn, n_trials=100)
+        gcn_params = study.best_params
+        gcn_values = study.best_value
+        with open("res/gcn_params_"+ntw_name+".txt", "w") as f:
+            f.write(str(gcn_params))
+            f.write("\n")
+            f.write("AUC-PRC: "+str(gcn_values))
                                 
     # GraphSAGE
-    print("GraphSAGE: ")
-    study = optuna.create_study(direction='maximize')
-    study.optimize(objective_sage, n_trials=2)
-    sage_params = study.best_params
-    sage_values = study.best_value
-    with open("res/sage_params_"+ntw_name+".txt", "w") as f:
-        f.write(str(sage_params))
-        f.write("\n")
-        f.write("AUC-PRC: "+str(sage_values))
+    if "sage" in to_train:
+        print("="*10)
+        print("GraphSAGE: ")
+        study = optuna.create_study(direction='maximize')
+        study.optimize(objective_sage, n_trials=100)
+        sage_params = study.best_params
+        sage_values = study.best_value
+        with open("res/sage_params_"+ntw_name+".txt", "w") as f:
+            f.write(str(sage_params))
+            f.write("\n")
+            f.write("AUC-PRC: "+str(sage_values))
 
     # GAT
-    print("GAT: ")
-    study = optuna.create_study(direction='maximize')
-    study.optimize(objective_gat, n_trials=2)
-    gat_params = study.best_params
-    gat_values = study.best_value
-    with open("res/gat_params_"+ntw_name+".txt", "w") as f:
-        f.write(str(gat_params))
-        f.write("\n")
-        f.write("AUC-PRC: "+str(gat_values))
+    if "gat" in to_train:
+        print("="*10)
+        print("GAT: ")
+        study = optuna.create_study(direction='maximize')
+        study.optimize(objective_gat, n_trials=100)
+        gat_params = study.best_params
+        gat_values = study.best_value
+        with open("res/gat_params_"+ntw_name+".txt", "w") as f:
+            f.write(str(gat_params))
+            f.write("\n")
+            f.write("AUC-PRC: "+str(gat_values))
 
     # GIN
-    print("GIN: ")
-    study = optuna.create_study(direction='maximize')
-    study.optimize(objective_gin, n_trials=2)
-    gin_params = study.best_params
-    gin_values = study.best_value
-    with open("res/gin_params_"+ntw_name+".txt", "w") as f:
-        f.write(str(gin_params))
-        f.write("\n")
-        f.write("AUC-PRC: "+str(gin_values))
+    if "gin" in to_train:
+        print("="*10)
+        print("GIN: ")
+        study = optuna.create_study(direction='maximize')
+        study.optimize(objective_gin, n_trials=100)
+        gin_params = study.best_params
+        gin_values = study.best_value
+        with open("res/gin_params_"+ntw_name+".txt", "w") as f:
+            f.write(str(gin_params))
+            f.write("\n")
+            f.write("AUC-PRC: "+str(gin_values))
