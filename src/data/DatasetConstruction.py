@@ -84,7 +84,7 @@ def load_ibm():
         preprocess_ibm()
     df_edges = pd.read_csv(path+'/edges.csv')
 
-    df_features = pd.read_csv(path+'/LI-Small_Trans.csv')
+    df_features = pd.read_csv(path+'/HI-Small_Trans.csv')
     df_features['Timestamp'] = pd.to_datetime(df_features['Timestamp'], format='%Y/%m/%d %H:%M')
     df_features.sort_values('Timestamp', inplace=True)
     df_features = df_features[df_features['Account']!= df_features['Account.1']]
@@ -106,7 +106,7 @@ def load_ibm():
     df_features['Minute'] = list_minute
 
     df_features = df_features.drop(columns=['Timestamp'])
-    df_features = pd.get_dummies(df_features, columns=['Receiving Currency', 'Payment Currency', 'Payment Format'])
+    df_features = pd.get_dummies(df_features, columns=['Receiving Currency', 'Payment Currency', 'Payment Format'], dtype=float)
 
     # Timestamp based split:
     mask = torch.tensor([False]*df_features.shape[0])
