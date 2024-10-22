@@ -58,7 +58,8 @@ def positional_features(
         fraud_dict_train: dict = None, 
         fraud_dict_test: dict = None,
         n_layers_decoder: int = 2,
-        hidden_dim_decoder: int = 5
+        hidden_dim_decoder: int = 5,
+        ntw_name: str = None
         ):
     
     print("intrinsic and summary: ")
@@ -66,12 +67,12 @@ def positional_features(
     
     print("networkx: ")
     ntw_nx = ntw.get_network_nx()
-    features_nx_df = local_features_nx(ntw_nx, alpha_pr, alpha_ppr, fraud_dict_train=fraud_dict_train)
+    features_nx_df = local_features_nx(ntw_nx, alpha_pr, alpha_ppr, fraud_dict_train=fraud_dict_train, ntw_name=ntw_name)
 
     ## Train NetworkKit
     print("networkit: ")
     ntw_nk = ntw.get_network_nk()
-    features_nk_df = features_nk(ntw_nk)
+    features_nk_df = features_nk(ntw_nk, ntw_name=ntw_name)
 
     ## Concatenate features
     features_df = pd.concat([X, features_nx_df, features_nk_df], axis=1)

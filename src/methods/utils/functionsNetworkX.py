@@ -1,24 +1,12 @@
 import networkx as nx
 import pandas as pd
 
-def local_features_nx(
+def local_features_nx_calculation(
         G_nx: nx.Graph, 
-        alpha_pr: float, 
-        alpha_ppr: float, 
-        fraud_dict_train: dict=None
-        ):
-    
-    if fraud_dict_train is None:
-        use_fraud_features = False
-    else:
-        use_fraud_features = True
-
+        fraud_dict_train: dict=None, 
+        use_fraud_features: bool=False
+):
     feature_dict = dict() #dictionary to save all values
-
-    pr_nx = nx.pagerank(G_nx, alpha=alpha_pr)
-
-    if use_fraud_features:
-        ppr_nx = nx.pagerank(G_nx, alpha=alpha_ppr, personalization=fraud_dict_train)
 
     for node in G_nx.nodes():
         ### Calculate the network features for a single node in the network ###
@@ -104,20 +92,46 @@ def local_features_nx(
                 legit_triangle,
                 density, 
                 RNC_F_node, 
-                RNC_NF_node, 
-                pr_nx[node],
-                ppr_nx[node]
+                RNC_NF_node
             ]
         else:
             feature_dict[node] = [
-                density, 
-                pr_nx[node]
+                density
                 ]
 
     if use_fraud_features:
-        features_df = pd.DataFrame(feature_dict, index=["fraud_degree", "legit_degree", "fraud_triangle", "semifraud_triangle", "legit_triangle", "density", "RNC_F_node", "RNC_NF_node", "PageRank", "PersonalisedPageRank"]).T
+        features_df = pd.DataFrame(feature_dict, index=["fraud_degree", "legit_degree", "fraud_triangle", "semifraud_triangle", "legit_triangle", "density", "RNC_F_node", "RNC_NF_node"]).T
     else:
-        features_df = pd.DataFrame(feature_dict, index=["density", "PageRank"]).T
+        features_df = pd.DataFrame(feature_dict, index=["density"]).T
 
+
+    return(features_df)
+
+def local_features_nx(
+        G_nx: nx.Graph, 
+        alpha_pr: float, 
+        alpha_ppr: float, 
+        fraud_dict_train: dict=None,
+        ntw_name: str='elliptic'
+        ):
+    
+    if fraud_dict_train is None:
+        use_fraud_features = False
+    else:
+        use_fraud_features = True
+    
+    location = 'res/'+ntw_name+'_features_nx.csv'
+    try:
+        features_df = pd.read_csv(location, index_col=0)
+    except:
+        features_df = local_features_nx_calculation(G_nx, fraud_dict_train=fraud_dict_train, use_fraud_features=use_fraud_features)
+        features_df.to_csv(location)
+
+    pr_nx = nx.pagerank(G_nx, alpha=alpha_pr)
+    features_df['PageRank'] = [pr_nx[x] for x in features_df.index]
+
+    if use_fraud_features:
+        ppr_nx = nx.pagerank(G_nx, alpha=alpha_ppr, personalization=fraud_dict_train)
+        features_df['PersonalisedPageRank'] = [ppr_nx[x] for x in features_df.index]
 
     return(features_df)

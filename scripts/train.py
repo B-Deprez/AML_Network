@@ -44,7 +44,8 @@ def objective_positional(trial):
         lr,
         fraud_dict_test=fraud_dict,
         n_layers_decoder=n_layers_decoder,
-        hidden_dim_decoder=hidden_dim_decoder
+        hidden_dim_decoder=hidden_dim_decoder, 
+        ntw_name=ntw_name+"_train"
         )
     return(ap_loss)
 
@@ -228,7 +229,7 @@ if __name__ == "__main__":
     train_mask, val_mask, test_mask = ntw.get_masks()
 
     to_train = [
-        "intrinsic",
+        #"intrinsic",
         "positional",
         "deepwalk",
         "node2vec",

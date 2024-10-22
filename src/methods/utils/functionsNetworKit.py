@@ -61,11 +61,21 @@ def eigenvector_nk(G_nk):
     
     return(eigen_df)
 
-def features_nk(G_nk):
+def features_nk_calculations(G_nk):
     betweenness = betweenness_nk(G_nk)
     closeness = closeness_nk(G_nk)
     eigenvector = eigenvector_nk(G_nk)
 
     features_df = betweenness.merge(closeness, on = "PSP").merge(eigenvector, on = "PSP")
+
+    return(features_df)
+
+def features_nk(G_nk, ntw_name):
+    location = 'res/'+ntw_name+'_features_nk.csv'
+    try:
+        features_df = pd.read_csv(location, index_col=0)
+    except:
+        features_df = features_nk_calculations(G_nk)
+        features_df.to_csv(location)
 
     return(features_df)
