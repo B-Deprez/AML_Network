@@ -1,5 +1,71 @@
 import networkx as nx
 import pandas as pd
+from multiprocessing import Pool, cpu_count
+from tqdm import tqdm
+
+def calculate_node_features(arg):
+    node, G_nx, fraud_dict_train, use_fraud_features = arg
+    ego_net = nx.ego_graph(G_nx, node)
+    
+    ## Density ##
+    N = len(ego_net.nodes())
+    M = len(ego_net.edges())
+    
+    try:
+        density = 2 * M / (N * (N - 1))
+    except:
+        density = 1
+    
+    ego_net.remove_node(node)
+    nodes_ego = ego_net.nodes()
+    edges_ego = ego_net.edges()
+    
+    if use_fraud_features:
+        ## Degree & RNC ##
+        fraud_degree = legit_degree = 0
+        RNC_F_node = RNC_NF_node = 0
+        num_ego_nodes = len(nodes_ego)
+        
+        for node_ego in nodes_ego:
+            # Fraud degree
+            fraud_degree += fraud_dict_train.get(node_ego, 0)
+            # Legit degree
+            legit_label = -1 * (fraud_dict_train.get(node_ego, 0) - 1)
+            legit_degree += legit_label
+        
+        # RNC fraud
+        RNC_F_node = fraud_degree / num_ego_nodes if num_ego_nodes else 0
+        # RNC legit
+        RNC_NF_node = legit_degree / num_ego_nodes if num_ego_nodes else 0
+        
+        ## Triangles ##
+        legit_triangle = semifraud_triangle = fraud_triangle = 0
+        
+        for edge in edges_ego:
+            fraud_0 = fraud_dict_train.get(edge[0], 0)
+            fraud_1 = fraud_dict_train.get(edge[1], 0)
+            num_fraud = fraud_0 + fraud_1
+            
+            if num_fraud == 0:
+                legit_triangle += 1
+            elif num_fraud == 1:
+                semifraud_triangle += 1
+            elif num_fraud == 2:
+                fraud_triangle += 1
+        
+        return (node, [
+            fraud_degree, 
+            legit_degree, 
+            fraud_triangle, 
+            semifraud_triangle,
+            legit_triangle,
+            density, 
+            RNC_F_node, 
+            RNC_NF_node
+        ])
+    else:
+        return (node, [density])
+
 
 def local_features_nx_calculation(
         G_nx: nx.Graph, 
@@ -8,104 +74,31 @@ def local_features_nx_calculation(
 ):
     feature_dict = dict() #dictionary to save all values
 
-    for node in G_nx.nodes():
-        ### Calculate the network features for a single node in the network ###
-        ego_net = nx.ego_graph(G_nx, node)
-        
-        ## Density ##
-        N = len(ego_net.nodes())
-        M = len(ego_net.edges())
-        
-        try:
-            density = 2*M/(N*(N-1))
-        except:
-            density = 1
-        
-        ##
-        
-        ego_net.remove_node(node)
-        nodes_ego = ego_net.nodes()
-        edges_ego = ego_net.edges()
-        
-        if use_fraud_features:
-            ## Degree & RNC ##
-            fraud_degree = legit_degree = 0
-            
-            RNC_F_node = RNC_NF_node = 0
-            
-            num_ego_nodes = len(nodes_ego)
-            
-            for node_ego in nodes_ego:
-                #Fraud degree
-                try:
-                    fraud_degree += fraud_dict_train[node_ego]
-                except:
-                    fraud_degree += 0 #not in dictionary: label 0
-                #Legit degree
-                try:
-                    legit_label = -1*(fraud_dict_train[node_ego]-1)
-                    legit_degree += legit_label
-                except:
-                    legit_degree += 1 #not in dictionary: label 0
-                    
-            #RNC fraud
-            try:
-                RNC_F_node = fraud_degree/num_ego_nodes
-            except:
-                RNC_F_node = 0
-            #RNC legit
-            try:
-                RNC_NF_node = legit_degree/num_ego_nodes
-            except:
-                RNC_NF_node = 0
-            ##
-            
-            ## Triangles ##
-            legit_triangle = semifraud_triangle = fraud_triangle = 0 
-            
-            for edge in edges_ego:
-                try:
-                    fraud_0 = fraud_dict_train[edge[0]]
-                except: 
-                    fraud_0 = 0 #not in dictionary: label 0
-                try:
-                    fraud_1 = fraud_dict_train[edge[1]]
-                except: 
-                    fraud_1 = 0 #not in dictionary: label 0
-                    
-                num_fraud = fraud_0 + fraud_1
-                
-                if num_fraud == 0:
-                    legit_triangle += 1
-                    
-                if num_fraud == 1:
-                    semifraud_triangle += 1
-                    
-                if num_fraud == 2:
-                    fraud_triangle += 1
-                    
-            feature_dict[node] = [
-                fraud_degree, 
-                legit_degree, 
-                fraud_triangle, 
-                semifraud_triangle,
-                legit_triangle,
-                density, 
-                RNC_F_node, 
-                RNC_NF_node
-            ]
-        else:
-            feature_dict[node] = [
-                density
-                ]
+    
 
     if use_fraud_features:
         features_df = pd.DataFrame(feature_dict, index=["fraud_degree", "legit_degree", "fraud_triangle", "semifraud_triangle", "legit_triangle", "density", "RNC_F_node", "RNC_NF_node"]).T
     else:
         features_df = pd.DataFrame(feature_dict, index=["density"]).T
 
-
-    return(features_df)
+    args = [(node, G_nx, fraud_dict_train, use_fraud_features) for node in G_nx.nodes()]
+    print("Calculating node features...")
+    with Pool(cpu_count()) as pool:
+        results = list(pool.map(calculate_node_features, args), total=len(args))
+    
+    print("Saving node features...")
+    for node, features in results:
+        feature_dict[node] = features
+    
+    if use_fraud_features:
+        features_df = pd.DataFrame(
+            feature_dict, 
+            index=["fraud_degree", "legit_degree", "fraud_triangle", "semifraud_triangle", "legit_triangle", "density", "RNC_F_node", "RNC_NF_node"]
+        ).T
+    else:
+        features_df = pd.DataFrame(feature_dict, index=["density"]).T
+    
+    return features_df
 
 def local_features_nx(
         G_nx: nx.Graph, 
