@@ -50,7 +50,7 @@ def preprocess_ibm():
     data_df.reset_index(inplace=True)
 
     data_df_accounts = data_df[['index', 'Account', 'Account.1', 'Timestamp']]
-    delta = 6*60 # 6 hours
+    delta = 1*60 # 1 hour
 
     num_obs = len(data_df_accounts)
     pieces = 100
