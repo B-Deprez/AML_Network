@@ -121,7 +121,9 @@ model_deepwalk = node2vec_representation(
 )
 
 x = model_deepwalk()
-x = x.detach()
+# Move x and x_intrinsic to cpu, so that they can be concatenated
+x = x.detach().to('cpu')
+x_intrinsic = x_intrinsic.to('cpu')
 x = torch.cat((x, x_intrinsic), 1)
 x_train = x[train_mask].to(device_decoder)
 x_test = x[test_mask].to(device_decoder).squeeze()
@@ -156,7 +158,9 @@ model_node2vec = node2vec_representation(
 )
 
 x = model_node2vec()
-x = x.detach()
+# Move x and x_intrinsic to cpu, so that they can be concatenated
+x = x.detach().to('cpu')
+x_intrinsic = x_intrinsic.to('cpu')
 x = torch.cat((x, x_intrinsic), 1)
 x_train = x[train_mask].to(device_decoder)
 x_test = x[test_mask].to(device_decoder).squeeze()

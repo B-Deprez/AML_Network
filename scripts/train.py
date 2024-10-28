@@ -229,7 +229,7 @@ if __name__ == "__main__":
     train_mask, val_mask, test_mask = ntw.get_masks()
 
     to_train = [
-        "intrinsic",
+        #"intrinsic",
         "positional",
         "deepwalk",
         "node2vec",
