@@ -84,7 +84,7 @@ def local_features_nx_calculation(
     args = [(node, G_nx, fraud_dict_train, use_fraud_features) for node in G_nx.nodes()]
     print("Calculating node features...")
     with Pool(cpu_count()) as pool:
-        results = list(pool.map(calculate_node_features, args), total=len(args))
+        results = list(pool.map(calculate_node_features, args))
     
     print("Saving node features...")
     for node, features in results:
