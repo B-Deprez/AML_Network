@@ -154,8 +154,10 @@ def node2vec_features(
     
     model_n2v.eval()
     x = model_n2v()
-    x = x.detach()
-    x = torch.cat((x, ntw_torch.x), 1) # Concatenate node2vec and intrinsic features
+    # For ease of use, move both tensors to the same device (cpu will always work)
+    x = x.detach().to('cpu')
+    x_intrinsic = ntw_torch.x.detach().to('cpu')
+    x = torch.cat((x, x_intrinsic), 1) # Concatenate node2vec and intrinsic features
 
     x_train = x[train_mask].to(device_decoder).squeeze()
     x_test = x[test_mask].to(device_decoder).squeeze()
