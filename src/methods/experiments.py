@@ -7,6 +7,7 @@ from torch.utils.data import DataLoader
 from src.methods.utils.functionsNetworkX import *
 from src.methods.utils.functionsNetworKit import *
 from src.methods.utils.functionsTorch import *
+from src.methods.utils.unsupervised  import *
 from src.methods.utils.GNN import *
 from utils.Network import *
 
@@ -16,7 +17,31 @@ from sklearn.metrics import average_precision_score
 
 import optuna
 
-def intrinsic_features(
+def intrinsic_features_unsupervised(
+        ntw, train_mask, test_mask,
+        n_estimators, max_features, bootstrap
+):
+    device_decoder = (
+        "cuda"
+        if torch.cuda.is_available()
+        else "mps"
+        if torch.backends.mps.is_available()
+        else "cpu"
+    )
+
+    X_train, y_train, X_test, y_test = ntw.get_train_test_split_intrinsic(train_mask, test_mask, device=device_decoder)
+    # Combine train and test to train isolation forest and do hyper-parameter tuning
+    X_train = torch.cat((X_train, X_test), 0)
+    y_test = torch.cat((y_train, y_test), 0)
+    # The data is given as tensors. First convert back to numpy darray
+    X_train = X_train.cpu().detach().numpy()
+    y_test = y_test.cpu().detach().numpy()
+    # Train the isolation forest
+    y_pred = isolation_forest(X_train, n_estimators, max_features, bootstrap)
+    ap_score = average_precision_score(y_test, y_pred)
+    return(ap_score)
+
+def intrinsic_features_supervised(
         ntw, train_mask, test_mask,
         n_layers_decoder, hidden_dim_decoder, lr, n_epochs_decoder
 ):
@@ -59,7 +84,8 @@ def positional_features(
         fraud_dict_test: dict = None,
         n_layers_decoder: int = 2,
         hidden_dim_decoder: int = 5,
-        ntw_name: str = None
+        ntw_name: str = None,
+        supervised: bool = True
         ):
     
     print("intrinsic and summary: ")
@@ -96,23 +122,27 @@ def positional_features(
     x_test = torch.tensor(features_df_test.drop(["PSP","fraud"], axis=1).values, dtype=torch.float32).to(device_decoder)
     y_test = torch.tensor(features_df_test["fraud"].values, dtype=torch.long).to(device_decoder)
 
-    decoder = Decoder_deep_norm(x_train.shape[1], n_layers_decoder, hidden_dim_decoder).to(device_decoder)
+    if supervised:
+        decoder = Decoder_deep_norm(x_train.shape[1], n_layers_decoder, hidden_dim_decoder).to(device_decoder)
 
-    optimizer = torch.optim.Adam(decoder.parameters(), lr=lr)
-    criterion = nn.CrossEntropyLoss()
+        optimizer = torch.optim.Adam(decoder.parameters(), lr=lr)
+        criterion = nn.CrossEntropyLoss()
 
-    for epoch in range(n_epochs_decoder):
-        decoder.train()
-        optimizer.zero_grad()
-        output = decoder(x_train)
-        loss = criterion(output, y_train)
-        loss.backward()
-        optimizer.step()
-        #print(f"Epoch {epoch+1}: Loss: {loss.item()}")
-    
-    decoder.eval()
-    y_pred = decoder(x_test)
-    y_pred = y_pred.softmax(dim=1)
+        for epoch in range(n_epochs_decoder):
+            decoder.train()
+            optimizer.zero_grad()
+            output = decoder(x_train)
+            loss = criterion(output, y_train)
+            loss.backward()
+            optimizer.step()
+            #print(f"Epoch {epoch+1}: Loss: {loss.item()}")
+        
+        decoder.eval()
+        y_pred = decoder(x_test)
+        y_pred = y_pred.softmax(dim=1)
+    else:
+        pass
+
     ap_score = average_precision_score(y_test.cpu().detach().numpy(), y_pred.cpu().detach().numpy()[:,1])
     return(ap_score)
 
@@ -127,7 +157,8 @@ def node2vec_features(
         q,
         lr,
         n_epochs,
-        n_epochs_decoder
+        n_epochs_decoder,
+        supervised: bool = True
 ):
     model_n2v = node2vec_representation(
         ntw_torch,
@@ -165,21 +196,25 @@ def node2vec_features(
     y_train = ntw_torch.y[train_mask].to(device_decoder).squeeze()
     y_test = ntw_torch.y[test_mask].to(device_decoder).squeeze()
 
-    decoder = Decoder_deep_norm(x_train.shape[1], 2, 10).to(device_decoder)
+    if supervised:
+        decoder = Decoder_deep_norm(x_train.shape[1], 2, 10).to(device_decoder)
 
-    optimizer = torch.optim.Adam(decoder.parameters(), lr=lr)
-    criterion = nn.CrossEntropyLoss()
+        optimizer = torch.optim.Adam(decoder.parameters(), lr=lr)
+        criterion = nn.CrossEntropyLoss()
 
-    for epoch in range(n_epochs_decoder):
-        decoder.train()
-        optimizer.zero_grad()
-        output = decoder(x_train)
-        loss = criterion(output, y_train)
-        loss.backward()
-        optimizer.step()
-    decoder.eval()
-    y_pred = decoder(x_test)
-    y_pred = y_pred.softmax(dim=1)
+        for epoch in range(n_epochs_decoder):
+            decoder.train()
+            optimizer.zero_grad()
+            output = decoder(x_train)
+            loss = criterion(output, y_train)
+            loss.backward()
+            optimizer.step()
+        decoder.eval()
+        y_pred = decoder(x_test)
+        y_pred = y_pred.softmax(dim=1)
+    else:
+        pass
+    
     ap_score = average_precision_score(y_test.cpu().detach().numpy(), y_pred.cpu().detach().numpy()[:,1])
     return(ap_score)
 
