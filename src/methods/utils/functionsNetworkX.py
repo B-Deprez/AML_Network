@@ -1,7 +1,7 @@
 import networkx as nx
 import pandas as pd
 from multiprocessing import Pool, cpu_count
-from tqdm import tqdm
+from node2vec import Node2Vec
 
 def calculate_node_features(arg):
     node, G_nx, fraud_dict_train, use_fraud_features = arg
@@ -128,3 +128,53 @@ def local_features_nx(
         features_df['PersonalisedPageRank'] = [ppr_nx[x] for x in features_df.index]
 
     return(features_df)
+
+def node2vec_embedding(
+        graph, 
+        dimensions, 
+        walk_length,
+        num_walks,
+        workers,
+        p, 
+        q,
+        window_size, 
+        negative
+                    ):
+    node2vec = Node2Vec(graph, dimensions=dimensions, p=p, q=q, walk_length=walk_length, num_walks=num_walks, workers=workers)
+    # Embed nodes
+    model = node2vec.fit(window=window_size, negative=negative, min_count=1)  # Any keywords acceptable by gensim.Word2Vec can be passed, `dimensions` and `workers` are automatically passed (from the Node2Vec constructor)
+
+    def get_embedding(u):
+        return model.wv[u]
+
+    return get_embedding
+
+def node2vec_nx(
+        G_nx: nx.Graph, 
+        embedding_dim: int = 128,
+        walk_length: int =20,
+        context_size: int =10,
+        walks_per_node: int =10,
+        num_negative_samples: int =1,
+        p: float =1.0,
+        q: float =1.0, #node2vec hyper-parameters
+        batch_size: int =128, 
+        lr: float =0.01, 
+        max_iter: int =150, 
+        n_epochs: int =100
+):
+    print("Calculating node2vec embedding...")
+    embedding = node2vec_embedding(
+        G_nx, 
+        embedding_dim, 
+        walk_length, 
+        walks_per_node, 
+        int(cpu_count()/1.5), # Not use all to save some memory
+        p, 
+        q, 
+        context_size,
+        num_negative_samples
+    )
+    print("Saving node2vec embedding...")
+    features_df = pd.DataFrame([embedding(x) for x in G_nx.nodes()], index=G_nx.nodes())
+    return features_df
