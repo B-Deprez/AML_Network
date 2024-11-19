@@ -186,6 +186,42 @@ def evaluate_model_deep(data, model, test_mask, percentile_q_list = [99], n_samp
 
     return(AUC_list, AP_list, precision_dict, recall_dict, F1_dict)
 
+def evaluate_if(model, x_test, y_test, percentile_q_list = [99], n_samples=1000):
+    AUC_list = []
+    AP_list = []
+
+    precision_dict = dict()
+    recall_dict = dict()
+    F1_dict = dict()
+
+    for percentile_q in percentile_q_list:
+        precision_dict[percentile_q] = []
+        recall_dict[percentile_q] = []
+        F1_dict[percentile_q] = []
+    
+    for _ in range(n_samples):
+        x_new, y_new = stratified_sampling(x_test, y_test)
+        y_pred = model.score_samples(x_new)
+
+        AUC = roc_auc_score(y_new, y_pred)
+        AP = average_precision_score(y_new, y_pred)
+
+        AUC_list.append(AUC)
+        AP_list.append(AP)
+
+        for percentile_q in percentile_q_list:
+            cutoff = np.percentile(y_pred, percentile_q)
+            y_pred_hard = (y_pred >= cutoff)*1
+            precision = precision_score(y_new, y_pred_hard)
+            recall = recall_score(y_new, y_pred_hard)
+            F1 = f1_score(y_new, y_pred_hard)
+
+            precision_dict[percentile_q].append(precision)
+            recall_dict[percentile_q].append(recall)
+            F1_dict[percentile_q].append(F1)
+        
+    return(AUC_list, AP_list, precision_dict, recall_dict, F1_dict)
+
 def save_results_TI(AUC_list, AP_list, model_name):
     res_dict = {'AUC': AUC_list, 'AP': AP_list}
     df = pd.DataFrame(res_dict)
