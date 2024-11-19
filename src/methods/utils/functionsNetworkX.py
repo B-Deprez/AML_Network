@@ -149,7 +149,7 @@ def node2vec_embedding(
 
     return get_embedding
 
-def node2vec_nx(
+def node2vec_representation_nx(
         G_nx: nx.Graph, 
         embedding_dim: int = 128,
         walk_length: int =20,
@@ -157,11 +157,7 @@ def node2vec_nx(
         walks_per_node: int =10,
         num_negative_samples: int =1,
         p: float =1.0,
-        q: float =1.0, #node2vec hyper-parameters
-        batch_size: int =128, 
-        lr: float =0.01, 
-        max_iter: int =150, 
-        n_epochs: int =100
+        q: float =1.0 #node2vec hyper-parameters
 ):
     print("Calculating node2vec embedding...")
     embedding = node2vec_embedding(
@@ -175,6 +171,5 @@ def node2vec_nx(
         context_size,
         num_negative_samples
     )
-    print("Saving node2vec embedding...")
-    features_df = pd.DataFrame([embedding(x) for x in G_nx.nodes()], index=G_nx.nodes())
-    return features_df
+    
+    return embedding
