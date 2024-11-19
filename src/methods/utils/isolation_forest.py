@@ -14,11 +14,13 @@ from sklearn.ensemble import IsolationForest
 def isolation_forest(
         X_train: np.ndarray, 
         n_estimators: int, 
+        max_samples: float,
         max_features: int, 
         bootstrap: bool
 ):
     clf = IsolationForest(
         n_estimators= n_estimators,
+        max_samples= max_samples,
         max_features= max_features,
         bootstrap=bootstrap,
         random_state=1997)
