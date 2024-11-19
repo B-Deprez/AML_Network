@@ -5,8 +5,10 @@ import torch.nn as nn
 from torch_geometric.data import Data
 from torch_geometric.loader import DataLoader, NeighborLoader
 from torch_geometric.nn import Node2Vec
+from multiprocessing import cpu_count
+import sys
 
-def node2vec_representation(G_torch: Data, train_mask: Tensor, test_mask: Tensor,
+def node2vec_representation_torch(G_torch: Data, train_mask: Tensor, test_mask: Tensor,
                             embedding_dim: int = 128,walk_length: int =20,context_size: int =10,walks_per_node: int =10,num_negative_samples: int =1,p: float =1.0,q: float =1.0, #node2vec hyper-parameters
                             batch_size: int =128, lr: float =0.01, max_iter: int =150, n_epochs: int =100): #learning hyper-parameters
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
@@ -22,8 +24,9 @@ def node2vec_representation(G_torch: Data, train_mask: Tensor, test_mask: Tensor
         q=q,
         sparse=True,
     ).to(device)
-    
-    loader = model.loader(batch_size=128, shuffle=True, num_workers=0)
+
+    num_workers = int(cpu_count()/2) if sys.platform == 'linux' else 0 
+    loader = model.loader(batch_size=128, shuffle=True, num_workers=num_workers)
     optimizer = torch.optim.SparseAdam(list(model.parameters()), lr=lr)
     
     def train():
@@ -69,9 +72,9 @@ def train_GNN(
         ):
     if loader is None:
         try:
-            loader = NeighborLoader(data, num_neighbors= [-1]*model.n_layers, input_nodes=train_mask, batch_size=batch_size, shuffle=True, num_workers=0) #Import all neighbours if there is train_mask
+            loader = NeighborLoader(data, num_neighbors= [-1]*model.n_layers, input_nodes=train_mask, batch_size=batch_size, shuffle=True, num_workers=int(cpu_count()/1.5)) #Import all neighbours if there is train_mask
         except:
-            loader = NeighborLoader(data, num_neighbors= [-1]*model.n_layers, batch_size=batch_size, shuffle=True, num_workers=0) #Import all neighbours if no train_mask
+            loader = NeighborLoader(data, num_neighbors= [-1]*model.n_layers, batch_size=batch_size, shuffle=True, num_workers=int(cpu_count()/1.5)) #Import all neighbours if no train_mask
 
     else:
         loader = loader #User-specified loader. Intetended mainly for GraphSAGE.
