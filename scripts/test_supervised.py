@@ -222,7 +222,7 @@ if __name__ == "__main__":
         ).to(device)
 
         train_model_deep(ntw_torch, model_GCN, train_mask, n_epochs, lr, batch_size, loader = None)
-        AUC_list_gcn, AP_list_gcn, precision_dict_gcn, recall_dict_gcn, F1_dict_gcn = evaluate_model_deep(ntw_torch, model_GCN, test_mask, percentile_q_list=percentile_q_list, n_samples=1000, device = device)
+        AUC_list_gcn, AP_list_gcn, precision_dict_gcn, recall_dict_gcn, F1_dict_gcn = evaluate_model_deep(ntw_torch, model_GCN, test_mask, percentile_q_list=percentile_q_list, n_samples=100, device = device)
         save_results_TI(AUC_list_gcn, AP_list_gcn, ntw_name+"_gcn")
         save_results_TD(precision_dict_gcn, recall_dict_gcn, F1_dict_gcn, ntw_name+"_gcn")
 
@@ -269,7 +269,7 @@ if __name__ == "__main__":
         )
 
         train_model_deep(ntw_torch, model_sage, train_mask, n_epochs, lr, batch_size, loader = train_loader)
-        AUC_list_sage, AP_list_sage, precision_dict_sage, recall_dict_sage, F1_dict_sage = evaluate_model_deep(ntw_torch, model_sage, test_mask, percentile_q_list=percentile_q_list, n_samples=1000, device = device, loader=test_loader)
+        AUC_list_sage, AP_list_sage, precision_dict_sage, recall_dict_sage, F1_dict_sage = evaluate_model_deep(ntw_torch, model_sage, test_mask, percentile_q_list=percentile_q_list, n_samples=100, device = device, loader=test_loader)
         save_results_TI(AUC_list_sage, AP_list_sage, ntw_name+"_sage")
         save_results_TD(precision_dict_sage, recall_dict_sage, F1_dict_sage, ntw_name+"_sage")
 
@@ -295,7 +295,7 @@ if __name__ == "__main__":
         ).to(device)
 
         train_model_deep(ntw_torch, model_gat, train_mask, n_epochs, lr, batch_size, loader = None)
-        AUC_list_gat, AP_list_gat, precision_dict_gat, recall_dict_gat, F1_dict_gat = evaluate_model_deep(ntw_torch, model_gat, test_mask, percentile_q_list=percentile_q_list, n_samples=1000, device = device)
+        AUC_list_gat, AP_list_gat, precision_dict_gat, recall_dict_gat, F1_dict_gat = evaluate_model_deep(ntw_torch, model_gat, test_mask, percentile_q_list=percentile_q_list, n_samples=100, device = device)
         save_results_TI(AUC_list_gat, AP_list_gat, ntw_name+"_gat")
         save_results_TD(precision_dict_gat, recall_dict_gat, F1_dict_gat, ntw_name+"_gat")
 
@@ -320,6 +320,6 @@ if __name__ == "__main__":
         ).to(device)
 
         train_model_deep(ntw_torch, model_gin, train_mask, n_epochs, lr, batch_size, loader = None)
-        AUC_list_gin, AP_list_gin, precision_dict_gin, recall_dict_gin, F1_dict_gin = evaluate_model_deep(ntw_torch, model_gin, test_mask, percentile_q_list=percentile_q_list, n_samples=1000, device = device)
+        AUC_list_gin, AP_list_gin, precision_dict_gin, recall_dict_gin, F1_dict_gin = evaluate_model_deep(ntw_torch, model_gin, test_mask, percentile_q_list=percentile_q_list, n_samples=100, device = device)
         save_results_TI(AUC_list_gin, AP_list_gin, ntw_name+"_gin")
         save_results_TD(precision_dict_gin, recall_dict_gin, F1_dict_gin, ntw_name+"_gin")

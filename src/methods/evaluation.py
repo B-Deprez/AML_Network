@@ -15,6 +15,8 @@ from src.data.DatasetConstruction import *
 
 from src.methods.utils.decoder import *
 
+from tqdm import tqdm
+
 def positional_features_calc(
         ntw,
         alpha_pr: float,
@@ -68,7 +70,7 @@ def stratified_sampling(x_test, y_test):
     x_new, y_new = resample(x_test, y_test, n_samples=n_samples, stratify=y_test)
     return(x_new, y_new)
 
-def evaluate_model_shallow(model, x_test, y_test, percentile_q_list = [99], n_samples=1000, device = "cpu"):
+def evaluate_model_shallow(model, x_test, y_test, percentile_q_list = [99], n_samples=100, device = "cpu"):
     AUC_list = []
     AP_list = []
     
@@ -82,7 +84,7 @@ def evaluate_model_shallow(model, x_test, y_test, percentile_q_list = [99], n_sa
 
     model.eval()
 
-    for _ in range(n_samples):
+    for _ in tqdm(range(n_samples)):
         x_new, y_new = stratified_sampling(x_test.cpu().detach().numpy(), y_test.cpu().detach().numpy())
         x_new = torch.from_numpy(x_new).to(device)
         y_new = torch.from_numpy(y_new).to(device)
@@ -137,7 +139,7 @@ def subsample_true_values_tensor(test_mask, p=0.5):
 
     return output_tensor
 
-def evaluate_model_deep(data, model, test_mask, percentile_q_list = [99], n_samples=1000, device = "cpu", loader = None):
+def evaluate_model_deep(data, model, test_mask, percentile_q_list = [99], n_samples=100, device = "cpu", loader = None):
     AUC_list = []
     AP_list = []
 
@@ -151,7 +153,7 @@ def evaluate_model_deep(data, model, test_mask, percentile_q_list = [99], n_samp
 
     model.eval()
 
-    for _ in range(n_samples):
+    for _ in tqdm(range(n_samples)):
         test_mask_new = resample_testmask(test_mask)
         if loader is None:
             model.eval()
@@ -186,7 +188,7 @@ def evaluate_model_deep(data, model, test_mask, percentile_q_list = [99], n_samp
 
     return(AUC_list, AP_list, precision_dict, recall_dict, F1_dict)
 
-def evaluate_if(model, x_test, y_test, percentile_q_list = [99], n_samples=1000):
+def evaluate_if(model, x_test, y_test, percentile_q_list = [99], n_samples=100):
     AUC_list = []
     AP_list = []
 
@@ -199,7 +201,7 @@ def evaluate_if(model, x_test, y_test, percentile_q_list = [99], n_samples=1000)
         recall_dict[percentile_q] = []
         F1_dict[percentile_q] = []
     
-    for _ in range(n_samples):
+    for _ in tqdm(range(n_samples)):
         x_new, y_new = stratified_sampling(x_test, y_test)
         y_pred = model.score_samples(x_new)
 
