@@ -5,8 +5,9 @@ DIR = os.path.dirname(os.path.abspath(__file__))
 os.chdir(DIR+"/../")
 sys.path.append(DIR+"/../")
 
-from src.methods.experiments import *
+from src.methods.experiments_supervised import *
 from src.data.DatasetConstruction import *
+import optuna
 
 #### Optuna objective ####
 def objective_intrinsic(trial):
@@ -15,7 +16,7 @@ def objective_intrinsic(trial):
     lr = trial.suggest_float('lr', 0.01, 0.1)
     n_epochs_decoder = trial.suggest_int('n_epochs_decoder', 5, 500)
 
-    ap_loss = intrinsic_features_supervised(
+    ap_loss = intrinsic_features(
         ntw, 
         train_mask, 
         val_mask,
@@ -74,7 +75,8 @@ def objective_deepwalk(trial):
         q,
         lr,
         n_epochs,
-        n_epochs_decoder
+        n_epochs_decoder, 
+        use_torch=True
         )
     return(ap_loss)
 
@@ -104,7 +106,9 @@ def objective_node2vec(trial):
         q,
         lr,
         n_epochs,
-        n_epochs_decoder
+        n_epochs_decoder, 
+        ntw_nx=ntw.get_network_nx(),
+        use_torch=False
         )
     return(ap_loss)
 
@@ -215,7 +219,7 @@ def objective_gin(trial):
 
 if __name__ == "__main__":
     ### Load Dataset ###
-    ntw_name = "ibm"
+    ntw_name = "elliptic"
 
     if ntw_name == "ibm":
         ntw = load_ibm()
@@ -229,8 +233,8 @@ if __name__ == "__main__":
     train_mask, val_mask, test_mask = ntw.get_masks()
 
     to_train = [
-        "intrinsic",
-        "positional",
+        #"intrinsic",
+        #"positional",
         "deepwalk",
         "node2vec",
         "gcn",
@@ -272,11 +276,11 @@ if __name__ == "__main__":
     ### Train Torch ###
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
-    ntw_torch = ntw.get_network_torch()
-    ntw_torch.x = ntw_torch.x[:,1:94] # Remove time_step and summary features
+    ntw_torch = ntw.get_network_torch().to(device)
+    if ntw_name == "elliptic":
+        ntw_torch.x = ntw_torch.x[:,1:94] # Remove time_step and summary features
     edge_index = ntw_torch.edge_index
     num_features = ntw_torch.num_features
-    num_classes = 3
     output_dim = 2
     batch_size=128
 
