@@ -245,7 +245,7 @@ def GNN_features(
     for epoch in range(n_epochs):
         loss_train = train_GNN()
         #loss_test = test_GNN(ntw_torch, model, test_mask=test_mask)
-        print('epoch: ', epoch, 'train loss: ', loss_train.item())
+        #print('epoch: ', epoch, 'train loss: ', loss_train.item(), 'test loss: ', loss_test.item())
     
     model.eval()
     if test_loader is None:
