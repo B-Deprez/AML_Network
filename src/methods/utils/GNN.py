@@ -14,7 +14,7 @@ class GCN(nn.Module):
             num_features: int, 
             hidden_dim: int, 
             embedding_dim: int, 
-            output_dim: int= 1, 
+            output_dim: int= 2, 
             n_layers: int = 3, 
             dropout_rate: float = 0
             ):
@@ -133,7 +133,7 @@ class GAT(nn.Module):
                 self.gat_hidden.append(GATv2Conv(heads*hidden_dim, hidden_dim, heads=heads))
             self.gat2 = GATv2Conv(heads*hidden_dim, embedding_dim, heads=heads, concat=False)
 
-        self.out = Decoder_linear(embedding_dim)
+        self.out = Decoder_linear(embedding_dim, output_dim)
 
     def forward(self, x, edge_index, edge_features=None):
         h = self.gat1(x, edge_index, edge_attr=edge_features)
@@ -207,7 +207,7 @@ class GIN(nn.Module):
                     nn.Linear(hidden_dim, embedding_dim)
                     ))
 
-        self.out = Decoder_linear(embedding_dim)
+        self.out = Decoder_linear(embedding_dim, output_dim)
     
     def forward(self, x, edge_index):
         h = self.gin1(x, edge_index)
@@ -283,7 +283,7 @@ class GINE(nn.Module):
                     ),
                     edge_dim=edge_dim)
         
-        self.out = Decoder_linear(embedding_dim)
+        self.out = Decoder_linear(embedding_dim, output_dim)
         
     def forward(self, x, edge_index, edge_features):
         h = self.gine1(x, edge_index, edge_features)
