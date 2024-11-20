@@ -27,7 +27,7 @@ def node2vec_representation_torch(G_torch: Data, train_mask: Tensor, test_mask: 
 
     num_workers = int(cpu_count()/2) if sys.platform == 'linux' else 0 
     loader = model.loader(batch_size=128, shuffle=True, num_workers=num_workers)
-    optimizer = torch.optim.SparseAdam(list(model.parameters()), lr=lr)
+    optimizer = torch.optim.SparseAdam(list(model.parameters()), lr=lr, weight_decay=5e-4)
     
     def train():
         model.train()
@@ -62,36 +62,36 @@ def node2vec_representation_torch(G_torch: Data, train_mask: Tensor, test_mask: 
 
     return model
 
-def train_GNN(
+def train_GNN_old(
         data: Data,
         model: nn.Module,
         loader: DataLoader = None,
-        lr: float = 0.02, 
-        batch_size:int =1,
+        lr: float = 0.02,
         train_mask: Tensor = None
         ):
-    if loader is None:
-        try:
-            loader = NeighborLoader(data, num_neighbors= [-1]*model.n_layers, input_nodes=train_mask, batch_size=batch_size, shuffle=True, num_workers=int(cpu_count()/1.5)) #Import all neighbours if there is train_mask
-        except:
-            loader = NeighborLoader(data, num_neighbors= [-1]*model.n_layers, batch_size=batch_size, shuffle=True, num_workers=int(cpu_count()/1.5)) #Import all neighbours if no train_mask
-
-    else:
-        loader = loader #User-specified loader. Intetended mainly for GraphSAGE.
-
+    
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     model.train()
-    optimizer = torch.optim.SGD(model.parameters(), lr=lr)
-    criterion = nn.CrossEntropyLoss()
-
-    for batch in loader:
+    optimizer = torch.optim.Adam(model.parameters(), lr=lr, weight_decay=5e-4)  # Define optimizer.
+    criterion = nn.CrossEntropyLoss()  # Define loss function.
+    if loader is None:
         optimizer.zero_grad()
-        out, h = model(batch.x, batch.edge_index.to(device))
-        y_hat = out[:batch.batch_size]
-        y = batch.y[:batch.batch_size]
-        loss = criterion(y_hat, y)
+        y_hat, h = model(data.x, data.edge_index.to(device))
+        y = data.y
+        loss = criterion(y_hat[train_mask], y[train_mask])
         loss.backward()
         optimizer.step()
+    else:
+        loader = loader #User-specified loader. Intetended mainly for GraphSAGE.
+        for batch in loader:
+            optimizer.zero_grad()
+            out, h = model(batch.x, batch.edge_index.to(device))
+            y_hat = out[:batch.batch_size]
+            y = batch.y[:batch.batch_size]
+            loss = criterion(y_hat, y)
+            loss.backward()
+            optimizer.step()
+
     return(loss)
 
 def test_GNN(

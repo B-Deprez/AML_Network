@@ -129,7 +129,7 @@ def objective_gcn(trial):
         n_layers=n_layers,
         dropout_rate=dropout_rate
         ).to(device)
-    ap_loss = GNN_features(ntw_torch, model_gcn, batch_size, lr, n_epochs, train_mask=train_mask, test_mask=val_mask)
+    ap_loss = GNN_features(ntw_torch, model_gcn, lr, n_epochs, train_mask=train_mask, test_mask=val_mask)
     return(ap_loss)
 
 def objective_sage(trial):
@@ -235,8 +235,8 @@ if __name__ == "__main__":
     to_train = [
         #"intrinsic",
         #"positional",
-        "deepwalk",
-        "node2vec",
+        #"deepwalk",
+        #"node2vec",
         "gcn",
         "sage",
         "gat",

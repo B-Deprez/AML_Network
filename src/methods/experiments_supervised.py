@@ -205,7 +205,6 @@ def node2vec_features(
 def GNN_features(
         ntw_torch: Data,
         model: nn.Module,
-        batch_size: int, 
         lr: float,
         n_epochs: int, 
         train_loader: DataLoader =None,
@@ -216,9 +215,37 @@ def GNN_features(
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     model = model.to(device)
 
+    #Here training should not be a whole other function, but should be part of this function
+
+    optimizer = torch.optim.Adam(model.parameters(), lr=lr, weight_decay=5e-4)  # Define optimizer.
+    criterion = nn.CrossEntropyLoss()  # Define loss function.
+
+    def train_GNN():
+        model.train()
+        if train_loader is None:
+            optimizer.zero_grad()
+            y_hat, h = model(ntw_torch.x, ntw_torch.edge_index.to(device))
+            y = ntw_torch.y
+            loss = criterion(y_hat[train_mask], y[train_mask])
+            loss.backward()
+            optimizer.step()
+        else:
+            loader = train_loader #User-specified loader. Intetended mainly for GraphSAGE.
+            for batch in loader:
+                optimizer.zero_grad()
+                out, h = model(batch.x, batch.edge_index.to(device))
+                y_hat = out[:batch.batch_size]
+                y = batch.y[:batch.batch_size]
+                loss = criterion(y_hat, y)
+                loss.backward()
+                optimizer.step()
+
+        return(loss)
+
     for epoch in range(n_epochs):
-        loss_train = train_GNN(ntw_torch, model, train_mask=train_mask, batch_size=batch_size, lr=lr, loader=train_loader)
+        loss_train = train_GNN()
         #loss_test = test_GNN(ntw_torch, model, test_mask=test_mask)
+        print('epoch: ', epoch, 'train loss: ', loss_train.item())
     
     model.eval()
     if test_loader is None:
@@ -235,6 +262,13 @@ def GNN_features(
             out, h = model(batch.x, batch.edge_index)
             y_hat = out[:batch.batch_size]
             y = batch.y[:batch.batch_size]
-    y = y.softmax(dim=1)
-    ap_score = average_precision_score(y.cpu().detach().numpy(), y_hat.cpu().detach().numpy()[:,1])
+    y_hat = y_hat.softmax(dim=1)
+
+    try:
+        ap_score = average_precision_score(y.cpu().detach().numpy(), y_hat.cpu().detach().numpy()[:,1])
+    except: # Just test accuarcy (more than one class)
+        pred = out.argmax(dim=1)
+        test_correct = pred[ntw_torch.test_mask] == ntw_torch.y[ntw_torch.test_mask]  # Check against ground-truth labels.
+        ap_score = int(test_correct.sum()) / int(ntw_torch.test_mask.sum()) 
+
     return(ap_score)
