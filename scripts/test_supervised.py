@@ -50,6 +50,12 @@ if __name__ == "__main__":
         else "cpu"
     )
 
+    # Calculate prevalence of fraud in the training set
+    X_train, y_train, X_test, y_test = ntw.get_train_test_split_intrinsic(train_mask, test_mask, device=device_decoder)
+
+    percentage_labels = torch.mean(y_train.float()).item()
+    percentile_q_list.append((1-percentage_labels)*100)
+
     if 'intrinsic' in to_test:
         ### Intrinsic features ###
         print("Intrinsic features")
@@ -57,11 +63,6 @@ if __name__ == "__main__":
             params = f.readlines()
         string_dict = params[0].strip()
         param_dict = eval(string_dict)
-
-        X_train, y_train, X_test, y_test = ntw.get_train_test_split_intrinsic(train_mask, test_mask, device=device_decoder)
-
-        percentage_labels = torch.mean(y_train.float()).item()
-        percentile_q_list.append((1-percentage_labels)*100)
 
         model_trained = train_model_shallow(X_train, y_train, param_dict["n_epochs_decoder"], param_dict["lr"], n_layers_decoder=param_dict["n_layers_decoder"], hidden_dim_decoder=param_dict["hidden_dim_decoder"], device_decoder=device_decoder)
 
