@@ -1,6 +1,7 @@
 import pandas as pd
 import torch
 from utils.Network import network_AML
+from tqdm import tqdm
 
 #### Elliptic dataset ####
 def load_elliptic():
@@ -39,26 +40,28 @@ def load_elliptic():
 from datetime import timedelta
 import os
 
-def preprocess_ibm():
+def preprocess_ibm(num_obs):
     date_format = '%Y/%m/%d %H:%M'
 
     data_df = pd.read_csv('data/IBM/HI-Small_Trans.csv')
     data_df['Timestamp'] = pd.to_datetime(data_df['Timestamp'], format=date_format)
     data_df.sort_values('Timestamp', inplace=True)
     data_df = data_df[data_df['Account']!= data_df['Account.1']]
+    start_index = int(len(data_df)-num_obs)
+    data_df = data_df.iloc[start_index:]
     data_df.reset_index(drop=True, inplace=True)
     data_df.reset_index(inplace=True)
 
     data_df_accounts = data_df[['index', 'Account', 'Account.1', 'Timestamp']]
-    delta = 6*60 # 6 hour
+    delta = 4*60 # 4 hours
 
-    num_obs = len(data_df_accounts)
+    print('Number of observations: ', len(data_df_accounts))
     pieces = 100
 
     source = []
     target = []
 
-    for i in range(pieces):
+    for i in tqdm(range(pieces)):
         start = i*num_obs//pieces
         end = (i+1)*num_obs//pieces
         data_df_right = data_df_accounts[start:end]
@@ -80,19 +83,27 @@ def preprocess_ibm():
 
 def load_ibm():
     path = 'data/IBM'
-    if not os.path.exists(path+'/edges.csv'):
-        preprocess_ibm()
-    df_edges = pd.read_csv(path+'/edges.csv')
 
     df_features = pd.read_csv(path+'/HI-Small_Trans.csv')
     df_features['Timestamp'] = pd.to_datetime(df_features['Timestamp'], format='%Y/%m/%d %H:%M')
     df_features.sort_values('Timestamp', inplace=True)
     df_features = df_features[df_features['Account']!= df_features['Account.1']]
+
+    num_obs = 500000
+    start_index = int(len(df_features)-500000)
+    df_features = df_features.iloc[start_index:]
+
     df_features.reset_index(drop=True, inplace=True)
     df_features.reset_index(inplace=True)
 
     df_features.columns = ['txId', 'Timestamp', 'From Bank', 'Account', 'To Bank', 'Account.1', 'Amount Received', 'Receiving Currency', 'Amount Paid', 'Payment Currency', 'Payment Format', 'class']
     df_features = df_features[['txId', 'Timestamp', 'Amount Received', 'Receiving Currency', 'Amount Paid', 'Payment Currency', 'Payment Format', 'class']]
+
+    print('Number of observations: ', len(df_features))
+
+    if not os.path.exists(path+'/edges.csv'):
+        preprocess_ibm(num_obs=num_obs)
+    df_edges = pd.read_csv(path+'/edges.csv')
 
     list_day = []
     list_hour = []
