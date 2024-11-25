@@ -59,7 +59,7 @@ def objective_deepwalk(trial):
     p = 1
     q = 1
     lr = trial.suggest_float('lr', 0.01, 0.1)
-    n_epochs = trial.suggest_int('n_epochs', 5, 500)
+    n_epochs = trial.suggest_int('n_epochs', 5, 100)
     n_epochs_decoder = trial.suggest_int('n_epochs_decoder', 5, 100)
 
     ap_loss = node2vec_features(
@@ -90,7 +90,7 @@ def objective_node2vec(trial):
     p = trial.suggest_float('p', 0.5, 2)
     q = trial.suggest_float('q', 0.5, 2)
     lr = trial.suggest_float('lr', 0.01, 0.1)
-    n_epochs = trial.suggest_int('n_epochs', 5, 500)
+    n_epochs = trial.suggest_int('n_epochs', 5, 100)
     n_epochs_decoder = trial.suggest_int('n_epochs_decoder', 5, 100)
 
     ap_loss = node2vec_features(
@@ -219,7 +219,7 @@ def objective_gin(trial):
 
 if __name__ == "__main__":
     ### Load Dataset ###
-    ntw_name = "elliptic"
+    ntw_name = "ibm"
 
     if ntw_name == "ibm":
         ntw = load_ibm()
@@ -238,9 +238,9 @@ if __name__ == "__main__":
         #"deepwalk",
         #"node2vec",
         "gcn",
-        "sage",
-        "gat",
-        "gin"
+        #"sage",
+        #"gat",
+        #"gin"
     ]
 
     ### Train intrinsic features ###
