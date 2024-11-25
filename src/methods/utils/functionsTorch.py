@@ -13,6 +13,8 @@ def node2vec_representation_torch(G_torch: Data, train_mask: Tensor, test_mask: 
                             batch_size: int =128, lr: float =0.01, max_iter: int =150, n_epochs: int =100): #learning hyper-parameters
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
     
+    n_obs = G_torch.num_nodes
+
     model = Node2Vec(
         G_torch.edge_index,
         embedding_dim=embedding_dim,
@@ -23,11 +25,13 @@ def node2vec_representation_torch(G_torch: Data, train_mask: Tensor, test_mask: 
         p=p,
         q=q,
         sparse=True,
+        num_nodes=n_obs,
     ).to(device)
 
     num_workers = int(cpu_count()/2) if sys.platform == 'linux' else 0 
-    loader = model.loader(batch_size=128, shuffle=True, num_workers=num_workers)
-    optimizer = torch.optim.SparseAdam(list(model.parameters()), lr=lr, weight_decay=5e-4)
+    batch_size = int(n_obs/10)
+    loader = model.loader(batch_size=batch_size, shuffle=True, num_workers=num_workers)
+    optimizer = torch.optim.SparseAdam(model.parameters(), lr=lr)
     
     def train():
         model.train()
@@ -54,11 +58,11 @@ def node2vec_representation_torch(G_torch: Data, train_mask: Tensor, test_mask: 
         )
         return acc
     
-    
+    print("Epochs: ", n_epochs)
     for epoch in range(n_epochs):
         loss = train()
         #acc = test()
-        #print(f'Epoch: {epoch:03d}, Loss: {loss:.4f}, Acc: {acc:.4f}')
+        print(f'Epoch: {epoch:03d}, Loss: {loss:.4f}, Acc: NA')
 
     return model
 
