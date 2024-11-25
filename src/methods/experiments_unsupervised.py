@@ -36,6 +36,7 @@ def intrinsic_features(
     y_test = y_test.cpu().detach().numpy()
     # Train the isolation forest
     max_features_int = int(np.ceil(max_features*X_train.shape[1]/100))
+
     y_pred = isolation_forest(X_train, n_estimators, max_samples, max_features_int, bootstrap)
     ap_score = average_precision_score(y_test, y_pred)
     return(ap_score)
