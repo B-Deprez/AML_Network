@@ -143,10 +143,11 @@ def resample_testmask(test_mask, p=0.5):
     # Randomly select a subset of these indices
     sampled_indices = random.sample(true_indices, min(sample_size, len(true_indices)))
 
-    # Create new list with False at all indices except the sampled ones
-    output_list = [i in sampled_indices for i in range(len(test_mask))]
+    # Create new tensor with False at all indices except the sampled ones
+    output_tensor = torch.zeros_like(test_mask, dtype=torch.bool)
+    output_tensor[sampled_indices] = True
 
-    return output_list
+    return output_tensor
 
 import torch
 
