@@ -141,7 +141,7 @@ def objective_sage(trial):
     n_epochs = trial.suggest_int('n_epochs', 5, 500)
 
     sage_aggr = trial.suggest_categorical('sage_aggr', ["min","mean","max"])
-    num_neighbors = trial.suggest_int("num_neighbors", 2, 5) # Keep number of neighbours low to have scaling benefits
+    #num_neighbors = trial.suggest_int("num_neighbors", 2, 5) # Keep number of neighbours low to have scaling benefits
 
     model_sage = GraphSAGE(
         edge_index=edge_index, 
@@ -153,25 +153,25 @@ def objective_sage(trial):
         dropout_rate=dropout_rate,
         sage_aggr=sage_aggr
     ).to(device)
-    train_loader = NeighborLoader(
-        ntw_torch, 
-        num_neighbors = [num_neighbors]*n_layers,
-        input_nodes = train_mask,
-        batch_size = batch_size,
-        shuffle = True,
-        num_workers = 0
-    )
+    #train_loader = NeighborLoader(
+    #    ntw_torch, 
+    #    num_neighbors = [num_neighbors]*n_layers,
+    #    input_nodes = train_mask,
+    #    batch_size = batch_size,
+    #    shuffle = True,
+    #    num_workers = 0
+    #)
 
-    val_loader = NeighborLoader(
-        ntw_torch, 
-        num_neighbors = [num_neighbors]*n_layers,
-        input_nodes = val_mask,
-        batch_size = int(val_mask.sum()),
-        shuffle = False,
-        num_workers = 0
-    )
+    #val_loader = NeighborLoader(
+    #    ntw_torch, 
+    #    num_neighbors = [num_neighbors]*n_layers,
+    #    input_nodes = val_mask,
+    #    batch_size = int(val_mask.sum()),
+    #    shuffle = False,
+    #    num_workers = 0
+    #)
 
-    ap_loss = GNN_features(ntw_torch, model_sage, batch_size, lr, n_epochs, train_loader=train_loader,test_loader=val_loader, train_mask=train_mask, test_mask=val_mask)
+    ap_loss = GNN_features(ntw_torch, model_sage, lr, n_epochs, train_mask=train_mask, test_mask=val_mask)
     return(ap_loss)
 
 def objective_gat(trial):
@@ -194,7 +194,7 @@ def objective_gat(trial):
         dropout_rate=dropout_rate
     ).to(device)
 
-    ap_loss = GNN_features(ntw_torch, model_gat, batch_size, lr, n_epochs, train_mask=train_mask, test_mask=val_mask)
+    ap_loss = GNN_features(ntw_torch, model_gat, lr, n_epochs, train_mask=train_mask, test_mask=val_mask)
     return(ap_loss)
 
 def objective_gin(trial):
@@ -214,12 +214,12 @@ def objective_gin(trial):
                     dropout_rate=dropout_rate
                 ).to(device)
     
-    ap_loss = GNN_features(ntw_torch, model_gin, batch_size, lr, n_epochs, train_mask=train_mask, test_mask=val_mask)
+    ap_loss = GNN_features(ntw_torch, model_gin, lr, n_epochs, train_mask=train_mask, test_mask=val_mask)
     return(ap_loss)
 
 if __name__ == "__main__":
     ### Load Dataset ###
-    ntw_name = "ibm"
+    ntw_name = "elliptic"
 
     if ntw_name == "ibm":
         ntw = load_ibm()
@@ -233,14 +233,14 @@ if __name__ == "__main__":
     train_mask, val_mask, test_mask = ntw.get_masks()
 
     to_train = [
-        #"intrinsic",
-        #"positional",
-        #"deepwalk",
-        #"node2vec",
+        "intrinsic",
+        "positional",
+        "deepwalk",
+        "node2vec",
         "gcn",
-        #"sage",
-        #"gat",
-        #"gin"
+        "sage",
+        "gat",
+        "gin"
     ]
 
     ### Train intrinsic features ###

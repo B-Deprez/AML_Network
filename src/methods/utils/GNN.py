@@ -4,6 +4,8 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch_geometric.nn import GCNConv, GATv2Conv, SAGEConv, GINConv, GINEConv
 from src.methods.utils.decoder import *
+from typing import List, Optional, Tuple, Union
+from torch_geometric.nn.aggr import Aggregation
 
 # Look at having hidden_dim and only embedding_dim in final layer
 
@@ -63,7 +65,7 @@ class GraphSAGE(nn.Module): #Neighbourhood sampling only in training step (via D
             output_dim: int, 
             n_layers: int, 
             dropout_rate: float = 0, 
-            sage_aggr: str='mean'
+            sage_aggr: Optional[Union[str, List[str], Aggregation]]='mean'
             ):
         super().__init__()
         self.edge_index = edge_index
