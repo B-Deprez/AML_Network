@@ -22,8 +22,8 @@ def isolation_forest(
         n_estimators= n_estimators,
         max_samples= max_samples,
         max_features= max_features,
-        bootstrap=bootstrap,
-        random_state=1997)
+        bootstrap=bootstrap
+        )
     clf.fit(X_train)
     y_scores = clf.score_samples(X_train) 
     y_scores = -y_scores
