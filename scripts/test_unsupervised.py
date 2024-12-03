@@ -6,7 +6,9 @@ DIR = os.path.dirname(os.path.abspath(__file__))
 os.chdir(DIR+"/../")
 sys.path.append(DIR+"/../")
 
-from methods.experiments_unsupervised import *
+from sklearn.ensemble import IsolationForest
+
+from src.methods.experiments_unsupervised import *
 from src.data.DatasetConstruction import *
 from src.methods.evaluation import *
 
@@ -49,6 +51,9 @@ if __name__ == "__main__":
     percentage_labels = torch.mean(y_train.float()).item()
     percentile_q_list.append((1-percentage_labels)*100)
 
+    X_test = torch.cat((X_train, X_test), 0)
+    y_test = torch.cat((y_train, y_test), 0)
+
     if 'intrinsic' in to_test:
         ### Intrinsic features ###
         print("Intrinsic features")
@@ -57,9 +62,16 @@ if __name__ == "__main__":
         string_dict = params[0].strip()
         param_dict = eval(string_dict)
 
-        model_trained = train_model_shallow(X_train, y_train, param_dict["n_epochs_decoder"], param_dict["lr"], n_layers_decoder=param_dict["n_layers_decoder"], hidden_dim_decoder=param_dict["hidden_dim_decoder"], device_decoder=device_decoder)
+        max_features = int(np.ceil(param_dict["max_features_dec%"]*X_train.shape[1]/10))
 
-        AUC_list_intr, AP_list_intr, precision_dict_intr, recall_dict_intr, F1_dict_intr = evaluate_model_shallow(model_trained, X_test, y_test, percentile_q_list=percentile_q_list, device=device_decoder)
+        model_intrinsic = IsolationForest(
+            n_estimators=param_dict["n_estimators"],
+            max_samples=param_dict["max_samples"],
+            max_features=max_features,
+            bootstrap=param_dict["bootstrap"]
+        )
+
+        AUC_list_intr, AP_list_intr, precision_dict_intr, recall_dict_intr, F1_dict_intr = evaluate_if(model_intrinsic, X_test, y_test, percentile_q_list=percentile_q_list)
         save_results_TI(AUC_list_intr, AP_list_intr, "intrinsic_unsupervised")
         save_results_TD(precision_dict_intr, recall_dict_intr, F1_dict_intr, "intrinsic_unsupervised")
 
@@ -85,26 +97,19 @@ if __name__ == "__main__":
             ntw_name=ntw_name+"_test"
         )
 
-        features_df_train = features_df[train_mask.numpy()]
+        x = torch.tensor(features_df.drop(["PSP","fraud"], axis=1).values, dtype=torch.float32).to(device_decoder)
+        y = torch.tensor(features_df["fraud"].values, dtype=torch.long).to(device_decoder)
 
-        x_train = torch.tensor(features_df_train.drop(["PSP","fraud"], axis=1).values, dtype=torch.float32).to(device_decoder)
-        y_train = torch.tensor(features_df_train["fraud"].values, dtype=torch.long).to(device_decoder)
+        max_features = int(np.ceil(param_dict["max_features_dec%"]*x.shape[1]/10))
 
-        features_df_test = features_df[test_mask.numpy()]
-
-        x_test = torch.tensor(features_df_test.drop(["PSP","fraud"], axis=1).values, dtype=torch.float32).to(device_decoder)
-        y_test = torch.tensor(features_df_test["fraud"].values, dtype=torch.long).to(device_decoder)
-
-        model_trained = train_model_shallow(
-            x_train,
-            y_train,
-            param_dict["n_epochs_decoder"],
-            param_dict["lr"],
-            n_layers_decoder=param_dict["n_layers_decoder"],
-            hidden_dim_decoder=param_dict["hidden_dim_decoder"],
-            device_decoder=device_decoder
+        model_pos = IsolationForest(
+            n_estimators=param_dict["n_estimators"],
+            max_samples=param_dict["max_samples"],
+            max_features=max_features,
+            bootstrap=param_dict["bootstrap"]
         )
-        AUC_list_pos, AP_list_pos, precision_dict_pos, recall_dict_pos, F1_dict_pos = evaluate_model_shallow(model_trained, x_test, y_test, percentile_q_list=percentile_q_list, device=device_decoder)
+
+        AUC_list_pos, AP_list_pos, precision_dict_pos, recall_dict_pos, F1_dict_pos = evaluate_if(model_pos, x, y, percentile_q_list=percentile_q_list)
         save_results_TI(AUC_list_pos, AP_list_pos, "positional_unsupervised")
         save_results_TD(precision_dict_pos, recall_dict_pos, F1_dict_pos, "positional_unsupervised")
 
@@ -145,14 +150,19 @@ if __name__ == "__main__":
         # Move x and x_intrinsic to cpu, so that they can be concatenated
         x = x.detach().to('cpu')
         x_intrinsic = x_intrinsic.to('cpu')
-        x = torch.cat((x, x_intrinsic), 1)
-        x_train = x[train_mask].to(device_decoder)
-        x_test = x[test_mask].to(device_decoder).squeeze()
-        y_train = ntw_torch.y[train_mask].to(device_decoder)
-        y_test = ntw_torch.y[test_mask].to(device_decoder).squeeze()
+        mask = torch.logical_or(train_mask, test_mask)
+        x = torch.cat((x, x_intrinsic), 1)[mask]
+        y = ntw_torch.y.clone().detach().to('cpu')[mask]
+        max_features = int(np.ceil(param_dict["max_features_dec%"]*x.shape[1]/10))
 
-        model_trained = train_model_shallow(x_train, y_train, param_dict["n_epochs_decoder"], param_dict["lr"], device_decoder=device_decoder)
-        AUC_list_dw, AP_list_dw, precision_dict_dw, recall_dict_dw, F1_dict_dw = evaluate_model_shallow(model_trained, x_test, y_test, percentile_q_list=percentile_q_list, device=device_decoder)
+        model_deepwalk = IsolationForest(
+            n_estimators=param_dict["n_estimators"],
+            max_samples=param_dict["max_samples"],
+            max_features=max_features,
+            bootstrap=param_dict["bootstrap"]
+        )
+
+        AUC_list_dw, AP_list_dw, precision_dict_dw, recall_dict_dw, F1_dict_dw = evaluate_if(model_deepwalk, x, y, percentile_q_list=percentile_q_list)
         save_results_TI(AUC_list_dw, AP_list_dw, "deepwalk_unsupervised")
         save_results_TD(precision_dict_dw, recall_dict_dw, F1_dict_dw, "deepwalk_unsupervised")
 
@@ -183,13 +193,18 @@ if __name__ == "__main__":
         # Move x and x_intrinsic to cpu, so that they can be concatenated
         x = x.detach().to('cpu')
         x_intrinsic = x_intrinsic.to('cpu')
-        x = torch.cat((x, x_intrinsic), 1)
-        x_train = x[train_mask].to(device_decoder)
-        x_test = x[test_mask].to(device_decoder).squeeze()
-        y_train = ntw_torch.y[train_mask].to(device_decoder)
-        y_test = ntw_torch.y[test_mask].to(device_decoder).squeeze()
+        mask = torch.logical_or(train_mask, test_mask)
+        x = torch.cat((x, x_intrinsic), 1)[mask]
+        y = ntw_torch.y.clone().detach().to('cpu')[mask]
+        max_features = int(np.ceil(param_dict["max_features_dec%"]*x.shape[1]/10))
 
-        model_trained = train_model_shallow(x_train, y_train, param_dict["n_epochs_decoder"], param_dict["lr"], device_decoder=device_decoder)
-        AUC_list_n2v, AP_list_n2v, precision_dict_n2v, recall_dict_n2v, F1_dict_n2v = evaluate_model_shallow(model_trained, x_test, y_test, percentile_q_list=percentile_q_list, device=device_decoder)
+        model_node2vec = IsolationForest(
+            n_estimators=param_dict["n_estimators"],
+            max_samples=param_dict["max_samples"],
+            max_features=max_features,
+            bootstrap=param_dict["bootstrap"]
+        )
+
+        AUC_list_n2v, AP_list_n2v, precision_dict_n2v, recall_dict_n2v, F1_dict_n2v = evaluate_if(model_node2vec, x, y, percentile_q_list=percentile_q_list)
         save_results_TI(AUC_list_n2v, AP_list_n2v, "node2vec_unsupervised")
         save_results_TD(precision_dict_n2v, recall_dict_n2v, F1_dict_n2v, "node2vec_unsupervised")

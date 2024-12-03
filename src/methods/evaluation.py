@@ -2,6 +2,7 @@ from sklearn.metrics import average_precision_score, roc_auc_score, precision_sc
 from sklearn.utils import resample
 import random
 
+from sklearn.ensemble import IsolationForest
 
 import torch.nn as nn
 import numpy as np
@@ -222,6 +223,9 @@ def evaluate_if(model, x_test, y_test, percentile_q_list = [99], n_samples=100):
     recall_dict = dict()
     F1_dict = dict()
 
+    x_test = x_test.cpu().detach().numpy()
+    y_test = y_test.cpu().detach().numpy()
+
     for percentile_q in percentile_q_list:
         precision_dict[percentile_q] = []
         recall_dict[percentile_q] = []
@@ -229,7 +233,10 @@ def evaluate_if(model, x_test, y_test, percentile_q_list = [99], n_samples=100):
     
     for _ in tqdm(range(n_samples)):
         x_new, y_new = stratified_sampling(x_test, y_test)
+
+        model.fit(x_new)
         y_pred = model.score_samples(x_new)
+        y_pred = -y_pred
 
         AUC = roc_auc_score(y_new, y_pred)
         AP = average_precision_score(y_new, y_pred)
