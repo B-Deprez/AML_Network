@@ -1,0 +1,2 @@
+{'n_layers_decoder': 3, 'hidden_dim_decoder': 13, 'lr': 0.05648414530744375, 'n_epochs_decoder': 157}
+AUC-PRC: 0.9410678627025231

@@ -1,0 +1,2 @@
+{'n_estimators': 60, 'max_samples': 0.4843046647709177, 'max_features_dec%': 10, 'bootstrap': True}
+AUC-PRC: 0.07089699074664664

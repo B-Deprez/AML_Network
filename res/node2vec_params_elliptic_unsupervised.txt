@@ -1,0 +1,2 @@
+{'embedding_dim': 63, 'walk_length': 4, 'context_size': 2, 'walks_per_node': 3, 'num_negative_samples': 4, 'p': 0.7849285234754986, 'q': 1.5752850916562102, 'lr': 0.041373766541303134, 'n_epochs': 59, 'n_estimators': 60, 'max_samples': 0.8238528856303784, 'max_features_dec%': 8, 'bootstrap': True}
+AUC-PRC: 0.06420431912633405

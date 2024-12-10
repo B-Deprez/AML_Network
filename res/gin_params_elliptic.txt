@@ -1,0 +1,2 @@
+{'hidden_dim': 214, 'embedding_dim': 74, 'n_layers': 1, 'dropout_rate': 0.2705493982527104, 'lr': 0.03456332430518397, 'n_epochs': 218}
+AUC-PRC: 0.793253534159797
