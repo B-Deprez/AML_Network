@@ -13,6 +13,7 @@ The main experiment is done on the elliptic dataset. Additional code is present 
 This repository does not provide any data, due to size constraints. The data can be found online using the following links:
 - [Cora](https://pytorch-geometric.readthedocs.io/en/latest/generated/torch_geometric.datasets.Planetoid.html#torch_geometric.datasets.Planetoid)
 - [Elliptic](https://pytorch-geometric.readthedocs.io/en/latest/generated/torch_geometric.datasets.EllipticBitcoinDataset.html#torch_geometric.datasets.EllipticBitcoinDataset)
+- [IBM-AML](https://www.kaggle.com/datasets/ealtman2019/ibm-transactions-for-anti-money-laundering-aml)
 
 ## Repository structure
 The structure includes folders and scripts/notebooks containing code. The files with results, i.e., csv-files, are note shown.
@@ -23,8 +24,10 @@ This repository is organised as follows:
     |-AnalysisResults.ipynb
 |-res
 |-scripts
-    |-test.py
-    |-train.py
+    |-train_supervides.py
+    |-test_supervised.py
+    |-train_unsupervides.py
+    |-test_unsupervised.py
 |-src
     |-data
         |-DatasetConstruction.py
@@ -35,8 +38,10 @@ This repository is organised as follows:
             |-functionsNetworkX.py
             |-functionsTorch.py
             |-GNN.py
+            |-isolation_forest.py
         |-evaluation.py
-        |-experiments.py
+        |-experiments_supervised.py
+        |-experiments_unsupervised.py
 |-utils
     |-Network.py
 ```
