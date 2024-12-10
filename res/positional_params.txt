@@ -1,2 +1,0 @@
-{'alpha_pr': 0.5932213303409021, 'n_epochs_decoder': 64, 'lr': 0.01660090524543912, 'n_layers_decoder': 1, 'hidden_dim_decoder': 6}
-AUC-PRC: 0.8389535168066353

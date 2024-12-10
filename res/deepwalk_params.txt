@@ -1,2 +1,0 @@
-{'embedding_dim': 5, 'walk_length': 3, 'context_size': 2, 'walks_per_node': 2, 'num_negative_samples': 1, 'lr': 0.05540558272281223, 'n_epochs': 176, 'n_epochs_decoder': 80}
-AUC-PRC: 0.873605292592628
