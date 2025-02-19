@@ -3,9 +3,9 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-orange.svg)](https://opensource.org/licenses/MIT)
 [![PWC](https://img.shields.io/endpoint.svg?url=https://paperswithcode.com/badge/network-analytics-for-anti-money-laundering-a/fraud-detection-on-elliptic-dataset)](https://paperswithcode.com/sota/fraud-detection-on-elliptic-dataset?p=network-analytics-for-anti-money-laundering-a)
 
-The source code of the experimental evaluation of the paper *Social Network Analytics for Anti-Money Laundering -- A Systematic Literature Review and Experimental Evaluation*.
+The source code of the experimental evaluation of the paper *Social Network Analytics for Anti-Money Laundering -- A Systematic Literature Review and Experimental Evaluation*. A preprint version of the work is available on arXiv at https://arxiv.org/abs/2405.19383.
 
-It provides an implementation of different network learning techniques in a uniform manner.
+This repository provides an implementation of different network learning techniques in a uniform manner.
 
 ## Data
 The main experiment is done on the elliptic dataset. Additional code is present that was used to verify the correct working of the code on the Cora dataset. 
