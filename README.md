@@ -59,10 +59,11 @@ Please cite our paper and/or code as follows:
 
 ```tex
 
-@misc{deprez2024networkevaluation,
+@article{deprez2024networkevaluation,
       title={Network Analytics for Anti-Money Laundering -- A Systematic Literature Review and Experimental Evaluation}, 
       author={Bruno Deprez and Toon Vanderschueren and Bart Baesens and Tim Verdonck and Wouter Verbeke},
       year={2024},
+      journal={arXiv preprint arXiv:2405.19383},
       eprint={2405.19383},
       archivePrefix={arXiv},
       primaryClass={cs.SI},
