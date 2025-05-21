@@ -62,7 +62,7 @@ def node2vec_representation_torch(G_torch: Data, train_mask: Tensor, test_mask: 
     for epoch in range(n_epochs):
         loss = train()
         #acc = test()
-        print(f'Epoch: {epoch:03d}, Loss: {loss:.4f}, Acc: NA')
+        #print(f'Epoch: {epoch:03d}, Loss: {loss:.4f}, Acc: NA')
 
     return model
 
