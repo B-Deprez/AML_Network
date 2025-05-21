@@ -15,18 +15,18 @@ from src.methods.evaluation import *
 
 if __name__ == "__main__":
     to_test = [
-        #"intrinsic",
-        #"positional",
-        #"deepwalk",
-        #"node2vec",
+        "intrinsic",
+        "positional",
+        "deepwalk",
+        "node2vec",
         "gcn",
-        #"sage",
+        "sage",
         "gat",
         "gin"
     ]
 
     ### Load Dataset ###
-    ntw_name = "elliptic"
+    ntw_name = "ibm"
 
     if ntw_name == "ibm":
         ntw = load_ibm()
@@ -237,7 +237,7 @@ if __name__ == "__main__":
 
         n_epochs = param_dict["n_epochs"]
         lr = param_dict["lr"]
-        num_neighbors = param_dict["num_neighbors"]
+        #num_neighbors = param_dict["num_neighbors"]
         n_layers = param_dict["n_layers"]
 
         model_sage = GraphSAGE(
@@ -251,26 +251,46 @@ if __name__ == "__main__":
             sage_aggr = param_dict["sage_aggr"]
         ).to(device)
 
-        train_loader = NeighborLoader(
-            ntw_torch, 
-            num_neighbors=[num_neighbors]*n_layers, 
-            input_nodes=train_mask,
-            batch_size = batch_size, 
-            shuffle=True,
-            num_workers=0
-        )
+        #train_loader = NeighborLoader(
+        #    ntw_torch, 
+        #    num_neighbors=[num_neighbors]*n_layers, 
+        #    input_nodes=train_mask,
+        #    batch_size = batch_size, 
+        #    shuffle=True,
+        #    num_workers=0
+        #)
 
-        test_loader = NeighborLoader(
-            ntw_torch,
-            num_neighbors=[num_neighbors]*n_layers,
-            input_nodes=test_mask,
-            batch_size = int(test_mask.sum()),
-            shuffle=False,
-            num_workers=0
-        )
+        #test_loader = NeighborLoader(
+        #    ntw_torch,
+        #    num_neighbors=[num_neighbors]*n_layers,
+        #    input_nodes=test_mask,
+        #    batch_size = int(test_mask.sum()),
+        #    shuffle=False,
+        #    num_workers=0
+        #)
 
-        train_model_deep(ntw_torch, model_sage, train_mask, n_epochs, lr, batch_size, loader = train_loader)
-        AUC_list_sage, AP_list_sage, precision_dict_sage, recall_dict_sage, F1_dict_sage = evaluate_model_deep(ntw_torch, model_sage, test_mask, percentile_q_list=percentile_q_list, n_samples=100, device = device, loader=test_loader)
+        class_weights = torch.tensor([1.0, (1 / percentage_labels) - 1], device=device)  # Calculate class weights.
+        print(class_weights)
+        optimizer = torch.optim.Adam(model_sage.parameters(), lr=lr, weight_decay=5e-4)  # Define optimizer.
+        criterion = nn.CrossEntropyLoss(weight=class_weights)  # Define weighted loss function.
+
+        def train_GNN():
+            model_sage.train()
+            optimizer.zero_grad()
+            y_hat, h = model_sage(ntw_torch.x, ntw_torch.edge_index.to(device))
+            y = ntw_torch.y
+            loss = criterion(y_hat[train_mask], y[train_mask])
+            loss.backward()
+            optimizer.step()
+
+            return(loss)
+        print('n_epochs: ', n_epochs)
+        for _ in range(n_epochs):
+            loss_train = train_GNN()
+            print('Epoch: {:03d}, Loss: {:.4f}'.format(_, loss_train))
+
+        #train_model_deep(ntw_torch, model_sage, train_mask, n_epochs, lr, batch_size)#, loader = train_loader)
+        AUC_list_sage, AP_list_sage, precision_dict_sage, recall_dict_sage, F1_dict_sage = evaluate_model_deep(ntw_torch, model_sage, test_mask, percentile_q_list=percentile_q_list, n_samples=100, device = device)#, loader=test_loader)
         save_results_TI(AUC_list_sage, AP_list_sage, ntw_name+"_sage")
         save_results_TD(precision_dict_sage, recall_dict_sage, F1_dict_sage, ntw_name+"_sage")
 
