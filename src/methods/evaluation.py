@@ -68,28 +68,18 @@ def train_model_deep(data, model, train_mask, n_epochs, lr, batch_size, loader =
 
     def train_GNN():
         model.train()
-        if loader is None:
-            optimizer.zero_grad()
-            y_hat, h = model(data.x, data.edge_index.to(device))
-            y = data.y
-            loss = criterion(y_hat[train_mask], y[train_mask])
-            loss.backward()
-            optimizer.step()
-        else:
-            loader = loader #User-specified loader. Intetended mainly for GraphSAGE.
-            for batch in loader:
-                optimizer.zero_grad()
-                out, h = model(batch.x, batch.edge_index.to(device))
-                y_hat = out[:batch.batch_size]
-                y = batch.y[:batch.batch_size]
-                loss = criterion(y_hat, y)
-                loss.backward()
-                optimizer.step()
+        optimizer.zero_grad()
+        y_hat, h = model(data.x, data.edge_index.to(device))
+        y = data.y
+        loss = criterion(y_hat[train_mask], y[train_mask])
+        loss.backward()
+        optimizer.step()
 
         return(loss)
 
     for _ in range(n_epochs):
         loss_train = train_GNN()
+        print('Epoch: {:03d}, Loss: {:.4f}'.format(_, loss_train))
     
 def stratified_sampling(x_test, y_test):
     n_samples = x_test.shape[0]
