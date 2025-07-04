@@ -56,7 +56,8 @@ def positional_features(
         fraud_dict_test: dict = None,
         n_layers_decoder: int = 2,
         hidden_dim_decoder: int = 5,
-        ntw_name: str = None
+        ntw_name: str = None,
+        use_intrinsic: bool = True
         ):
     
     print("intrinsic and summary: ")
@@ -72,7 +73,10 @@ def positional_features(
     features_nk_df = features_nk(ntw_nk, ntw_name=ntw_name)
 
     ## Concatenate features
-    features_df = pd.concat([X, features_nx_df, features_nk_df], axis=1)
+    if use_intrinsic:
+        features_df = pd.concat([X, features_nx_df, features_nk_df], axis=1)
+    else:
+        features_df = pd.concat([features_nx_df, features_nk_df], axis=1)
     features_df["fraud"] = [fraud_dict_test[x] for x in features_df.index]
 
     device_decoder = (
@@ -127,7 +131,8 @@ def node2vec_features(
         n_epochs=1,
         n_epochs_decoder=1,
         ntw_nx = None,
-        use_torch = False
+        use_torch = False, 
+        use_intrinsic=True
 ):
     if use_torch:
         model_n2v = node2vec_representation_torch(
@@ -167,7 +172,8 @@ def node2vec_features(
         x = torch.tensor(x_df.values).to('cpu')
     
     x_intrinsic = ntw_torch.x.detach().to('cpu')
-    x = torch.cat((x, x_intrinsic), 1) # Concatenate node2vec and intrinsic features
+    if use_intrinsic:
+        x = torch.cat((x, x_intrinsic), 1) # Concatenate node2vec and intrinsic features
 
     device_decoder = (
             "cuda"
@@ -210,7 +216,8 @@ def GNN_features(
         train_loader: DataLoader =None,
         test_loader: DataLoader =None,
         train_mask: torch.Tensor = None,
-        test_mask: torch.Tensor = None
+        test_mask: torch.Tensor = None,
+        use_intrinsic: bool = True
 ):
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     model = model.to(device)
@@ -220,7 +227,7 @@ def GNN_features(
     optimizer = torch.optim.Adam(model.parameters(), lr=lr, weight_decay=5e-4)  # Define optimizer.
     criterion = nn.CrossEntropyLoss()  # Define loss function.
 
-    def train_GNN():
+    def train_GNN_feat():
         model.train()
         if train_loader is None:
             optimizer.zero_grad()
@@ -241,15 +248,51 @@ def GNN_features(
                 optimizer.step()
 
         return(loss)
+    
+    def train_GNN_ones():
+        model.train()
+        if train_loader is None:
+            optimizer.zero_grad()
+            # Vector of ones for training
+            ones = torch.ones((ntw_torch.x.shape[0], 1),dtype=torch.float32).to(device)
+            y_hat, h = model(ones, ntw_torch.edge_index.to(device))
+            y = ntw_torch.y
+            loss = criterion(y_hat[train_mask], y[train_mask])
+            loss.backward()
+            optimizer.step()
+        else:
+            loader = train_loader #User-specified loader. Intetended mainly for GraphSAGE.
+            for batch in loader:
+                # Vector of ones for training
+                ones = torch.ones((ntw_torch.x.shape[0], 1),dtype=torch.float32).to(device)
+                optimizer.zero_grad()
+                out, h = model(ones, batch.edge_index.to(device))
+                y_hat = out[:batch.batch_size]
+                y = batch.y[:batch.batch_size]
+                loss = criterion(y_hat, y)
+                loss.backward()
+                optimizer.step()
 
-    for epoch in range(n_epochs):
-        loss_train = train_GNN()
-        #loss_test = test_GNN(ntw_torch, model, test_mask=test_mask)
-        #print('epoch: ', epoch, 'train loss: ', loss_train.item(), 'test loss: ', loss_test.item())
+        return(loss)
+
+    if use_intrinsic:
+        for epoch in range(n_epochs):
+            loss_train = train_GNN_feat()
+            print('epoch: ', epoch, 'train loss: ', loss_train.item())
+    else:
+        for epoch in range(n_epochs):
+            loss_train = train_GNN_ones()
+            print('epoch: ', epoch, 'train loss: ', loss_train.item())
     
     model.eval()
     if test_loader is None:
-        out, h = model(ntw_torch.x, ntw_torch.edge_index.to(device))
+        if use_intrinsic:
+            out, h = model(ntw_torch.x, ntw_torch.edge_index.to(device))
+        else:
+            # Vector of ones for testing
+            ones = torch.ones((ntw_torch.x.shape[0], 1),dtype=torch.float32).to(device)
+            out, h = model(ones, ntw_torch.edge_index.to(device))
+
         if test_mask is None: # If no test_mask is provided, use all data
             y_hat = out
             y = ntw_torch.y
@@ -259,7 +302,12 @@ def GNN_features(
     else:
         for batch in test_loader:
             batch = batch.to(device, 'edge_index')
-            out, h = model(batch.x, batch.edge_index)
+            if use_intrinsic:
+                out, h = model(batch.x, batch.edge_index)
+            else:
+                # Vector of ones for testing
+                ones = torch.ones((ntw_torch.x.shape[0], 1),dtype=torch.float32).to(device)
+                out, h = model(ones, batch.edge_index)
             y_hat = out[:batch.batch_size]
             y = batch.y[:batch.batch_size]
     y_hat = y_hat.softmax(dim=1)
