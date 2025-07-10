@@ -24,11 +24,9 @@ def positional_features_calc(
         alpha_ppr: float=None,
         fraud_dict_train: dict=None,
         fraud_dict_test: dict=None,
-        ntw_name: str=None
+        ntw_name: str=None, 
+        use_intrinsic: bool = True
 ):
-    print("intrinsic and summary: ")
-    X = ntw.get_features(full=True)
-
     print("networkx: ")
     ntw_nx = ntw.get_network_nx()
     features_nx_df = local_features_nx(ntw_nx, alpha_pr, alpha_ppr, fraud_dict_train=fraud_dict_train, ntw_name=ntw_name)
@@ -39,12 +37,23 @@ def positional_features_calc(
     features_nk_df = features_nk(ntw_nk, ntw_name=ntw_name)
 
     ## Concatenate features
-    features_df = pd.concat([X, features_nx_df, features_nk_df], axis=1)
+    if use_intrinsic:
+        print("intrinsic and summary: ")
+        X = ntw.get_features(full=True)
+        features_df = pd.concat([X, features_nx_df, features_nk_df], axis=1)
+    else:
+        features_df = pd.concat([features_nx_df, features_nk_df], axis=1)
     features_df["fraud"] = [fraud_dict_test[x] for x in features_df.index]
     return features_df
 
-def train_model_shallow(x_train, y_train , n_epochs_decoder, lr,
-                        n_layers_decoder=2, hidden_dim_decoder=10, device_decoder="cpu"):
+def train_model_shallow(
+        x_train, 
+        y_train, 
+        n_epochs_decoder: int, 
+        lr: float,
+        n_layers_decoder: int=2, 
+        hidden_dim_decoder: int=10, 
+        device_decoder: str="cpu"):
     decoder = Decoder_deep_norm(x_train.shape[1], n_layers_decoder, hidden_dim_decoder).to(device_decoder)
 
     optimizer = torch.optim.Adam(decoder.parameters(), lr=lr)
@@ -59,22 +68,26 @@ def train_model_shallow(x_train, y_train , n_epochs_decoder, lr,
         optimizer.step()
     return(decoder)
 
-def train_model_deep(data, model, train_mask, n_epochs, lr, batch_size, loader = None):
+def train_model_deep(data, model, train_mask, n_epochs, lr, batch_size, loader = None, use_intrinsic=True):
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     model = model.to(device)
 
     optimizer = torch.optim.Adam(model.parameters(), lr=lr, weight_decay=5e-4)  # Define optimizer.
     criterion = nn.CrossEntropyLoss()  # Define loss function.
 
+    if use_intrinsic:
+        features = data.x
+    else:
+        features = torch.ones((data.x.shape[0], 1),dtype=torch.float32).to(device)
+
     def train_GNN():
         model.train()
         optimizer.zero_grad()
-        y_hat, h = model(data.x, data.edge_index.to(device))
+        y_hat, h = model(features, data.edge_index.to(device))
         y = data.y
         loss = criterion(y_hat[train_mask], y[train_mask])
         loss.backward()
         optimizer.step()
-
         return(loss)
 
     for _ in range(n_epochs):
@@ -156,7 +169,7 @@ def subsample_true_values_tensor(test_mask, p=0.5):
 
     return output_tensor
 
-def evaluate_model_deep(data, model, test_mask, percentile_q_list = [99], n_samples=100, device = "cpu", loader = None):
+def evaluate_model_deep(data, model, test_mask, percentile_q_list = [99], n_samples=100, device = "cpu", loader = None, use_intrinsic=True):
     AUC_list = []
     AP_list = []
 
@@ -174,14 +187,22 @@ def evaluate_model_deep(data, model, test_mask, percentile_q_list = [99], n_samp
         test_mask_new = resample_testmask(test_mask)
         if loader is None:
             model.eval()
-            out, h = model(data.x, data.edge_index.to(device))
+            if use_intrinsic:
+                features = data.x
+            else:
+                features = torch.ones((data.x.shape[0], 1), dtype=torch.float32).to(device)
+            out, h = model(features, data.edge_index.to(device))
             y_hat = out[test_mask_new].to(device) # Prediction
             y = data.y[test_mask_new].to(device) # True value
             
         else:
             batch = next(iter(loader))
             batch = batch.to(device, 'edge_index')
-            out, h = model(batch.x, batch.edge_index)
+            if use_intrinsic:
+                features = batch.x
+            else:
+                features = torch.ones((batch.x.shape[0], 1), dtype=torch.float32).to(device)
+            out, h = model(features, batch.edge_index)
             y_hat = out[:batch.batch_size] # Prediction
             y = batch.y[:batch.batch_size] # True value
         y_hat  = y_hat.softmax(dim=1) # Get probability of fraud

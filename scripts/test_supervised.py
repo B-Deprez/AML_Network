@@ -14,16 +14,30 @@ from src.data.DatasetConstruction import *
 from src.methods.evaluation import *
 
 if __name__ == "__main__":
-    to_test = [
-        "intrinsic",
-        "positional",
-        "deepwalk",
-        "node2vec",
-        "gcn",
-        "sage",
-        "gat",
-        "gin"
-    ]
+    use_intrinsic = False
+    intrinsic_str = "_intrinsic" if use_intrinsic else "_no_intrinsic"
+
+    if use_intrinsic:
+        to_test = [
+            "intrinsic",
+            "positional",
+            "deepwalk",
+            "node2vec",
+            "gcn",
+            "sage",
+            "gat",
+            "gin"
+        ]
+    else:
+        to_test = [
+            "positional",
+            "deepwalk",
+            "node2vec",
+            "gcn",
+            "sage",
+            "gat",
+            "gin"
+        ]
 
     ### Load Dataset ###
     ntw_name = "ibm"
@@ -89,7 +103,8 @@ if __name__ == "__main__":
             alpha_ppr=None,
             fraud_dict_train=None,
             fraud_dict_test=fraud_dict,
-            ntw_name=ntw_name+"_test"
+            ntw_name=ntw_name+"_test",
+            use_intrinsic=use_intrinsic
         )
 
         features_df_train = features_df[train_mask.numpy()]
@@ -112,8 +127,9 @@ if __name__ == "__main__":
             device_decoder=device_decoder
         )
         AUC_list_pos, AP_list_pos, precision_dict_pos, recall_dict_pos, F1_dict_pos = evaluate_model_shallow(model_trained, x_test, y_test, percentile_q_list=percentile_q_list, device=device_decoder)
-        save_results_TI(AUC_list_pos, AP_list_pos, ntw_name+"_positional")
-        save_results_TD(precision_dict_pos, recall_dict_pos, F1_dict_pos, ntw_name+"_positional")
+        
+        save_results_TI(AUC_list_pos, AP_list_pos, ntw_name+"_positional"+intrinsic_str)
+        save_results_TD(precision_dict_pos, recall_dict_pos, F1_dict_pos, ntw_name+"_positional"+intrinsic_str)
 
     #### Troch models ####
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
@@ -121,7 +137,10 @@ if __name__ == "__main__":
     ntw_torch = ntw.get_network_torch().to(device)
     ntw_torch.x = ntw_torch.x[:,1:]
     edge_index = ntw_torch.edge_index
-    num_features = ntw_torch.num_features
+    if use_intrinsic:
+        num_features = ntw_torch.num_features
+    else:
+        num_features = 1
     output_dim = 2
     batch_size=128
 
@@ -151,8 +170,9 @@ if __name__ == "__main__":
         x = model_deepwalk()
         # Move x and x_intrinsic to cpu, so that they can be concatenated
         x = x.detach().to('cpu')
-        x_intrinsic = x_intrinsic.to('cpu')
-        x = torch.cat((x, x_intrinsic), 1)
+        if use_intrinsic:
+            x_intrinsic = x_intrinsic.to('cpu')
+            x = torch.cat((x, x_intrinsic), 1)
         x_train = x[train_mask].to(device_decoder)
         x_test = x[test_mask].to(device_decoder).squeeze()
         y_train = ntw_torch.y[train_mask].to(device_decoder)
@@ -160,8 +180,9 @@ if __name__ == "__main__":
 
         model_trained = train_model_shallow(x_train, y_train, param_dict["n_epochs_decoder"], param_dict["lr"], device_decoder=device_decoder)
         AUC_list_dw, AP_list_dw, precision_dict_dw, recall_dict_dw, F1_dict_dw = evaluate_model_shallow(model_trained, x_test, y_test, percentile_q_list=percentile_q_list, device=device_decoder)
-        save_results_TI(AUC_list_dw, AP_list_dw, ntw_name+"_deepwalk")
-        save_results_TD(precision_dict_dw, recall_dict_dw, F1_dict_dw, ntw_name+"_deepwalk")
+
+        save_results_TI(AUC_list_dw, AP_list_dw, ntw_name+"_deepwalk"+intrinsic_str)
+        save_results_TD(precision_dict_dw, recall_dict_dw, F1_dict_dw, ntw_name+"_deepwalk"+intrinsic_str)
 
     if 'node2vec' in to_test:
         ## node2vec
@@ -189,8 +210,9 @@ if __name__ == "__main__":
         x = model_node2vec()
         # Move x and x_intrinsic to cpu, so that they can be concatenated
         x = x.detach().to('cpu')
-        x_intrinsic = x_intrinsic.to('cpu')
-        x = torch.cat((x, x_intrinsic), 1)
+        if use_intrinsic:
+            x_intrinsic = x_intrinsic.to('cpu')
+            x = torch.cat((x, x_intrinsic), 1)
         x_train = x[train_mask].to(device_decoder)
         x_test = x[test_mask].to(device_decoder).squeeze()
         y_train = ntw_torch.y[train_mask].to(device_decoder)
@@ -198,8 +220,9 @@ if __name__ == "__main__":
 
         model_trained = train_model_shallow(x_train, y_train, param_dict["n_epochs_decoder"], param_dict["lr"], device_decoder=device_decoder)
         AUC_list_n2v, AP_list_n2v, precision_dict_n2v, recall_dict_n2v, F1_dict_n2v = evaluate_model_shallow(model_trained, x_test, y_test, percentile_q_list=percentile_q_list, device=device_decoder)
-        save_results_TI(AUC_list_n2v, AP_list_n2v, ntw_name+"_node2vec")
-        save_results_TD(precision_dict_n2v, recall_dict_n2v, F1_dict_n2v, ntw_name+"_node2vec")
+        
+        save_results_TI(AUC_list_n2v, AP_list_n2v, ntw_name+"_node2vec"+intrinsic_str)
+        save_results_TD(precision_dict_n2v, recall_dict_n2v, F1_dict_n2v, ntw_name+"_node2vec"+intrinsic_str)
 
     if 'gcn' in to_test:
         ## GCN
@@ -222,10 +245,11 @@ if __name__ == "__main__":
             dropout_rate=param_dict["dropout_rate"]
         ).to(device)
 
-        train_model_deep(ntw_torch, model_GCN, train_mask, n_epochs, lr, batch_size, loader = None)
-        AUC_list_gcn, AP_list_gcn, precision_dict_gcn, recall_dict_gcn, F1_dict_gcn = evaluate_model_deep(ntw_torch, model_GCN, test_mask, percentile_q_list=percentile_q_list, n_samples=100, device = device)
-        save_results_TI(AUC_list_gcn, AP_list_gcn, ntw_name+"_gcn")
-        save_results_TD(precision_dict_gcn, recall_dict_gcn, F1_dict_gcn, ntw_name+"_gcn")
+        train_model_deep(ntw_torch, model_GCN, train_mask, n_epochs, lr, batch_size, loader = None, use_intrinsic=use_intrinsic)
+        AUC_list_gcn, AP_list_gcn, precision_dict_gcn, recall_dict_gcn, F1_dict_gcn = evaluate_model_deep(ntw_torch, model_GCN, test_mask, percentile_q_list=percentile_q_list, n_samples=100, device = device, use_intrinsic=use_intrinsic)
+
+        save_results_TI(AUC_list_gcn, AP_list_gcn, ntw_name+"_gcn"+intrinsic_str)
+        save_results_TD(precision_dict_gcn, recall_dict_gcn, F1_dict_gcn, ntw_name+"_gcn"+intrinsic_str)
 
     if 'sage' in to_test:
         #GraphSAGE
@@ -274,10 +298,15 @@ if __name__ == "__main__":
         optimizer = torch.optim.Adam(model_sage.parameters(), lr=lr, weight_decay=5e-4)  # Define optimizer.
         criterion = nn.CrossEntropyLoss(weight=class_weights)  # Define weighted loss function.
 
+        if use_intrinsic:
+            features =ntw_torch.x
+        else:
+            features = torch.ones((ntw_torch.x.shape[0], 1),dtype=torch.float32).to(device)
+
         def train_GNN():
             model_sage.train()
             optimizer.zero_grad()
-            y_hat, h = model_sage(ntw_torch.x, ntw_torch.edge_index.to(device))
+            y_hat, h = model_sage(features, ntw_torch.edge_index.to(device))
             y = ntw_torch.y
             loss = criterion(y_hat[train_mask], y[train_mask])
             loss.backward()
@@ -290,9 +319,9 @@ if __name__ == "__main__":
             print('Epoch: {:03d}, Loss: {:.4f}'.format(_, loss_train))
 
         #train_model_deep(ntw_torch, model_sage, train_mask, n_epochs, lr, batch_size)#, loader = train_loader)
-        AUC_list_sage, AP_list_sage, precision_dict_sage, recall_dict_sage, F1_dict_sage = evaluate_model_deep(ntw_torch, model_sage, test_mask, percentile_q_list=percentile_q_list, n_samples=100, device = device)#, loader=test_loader)
-        save_results_TI(AUC_list_sage, AP_list_sage, ntw_name+"_sage")
-        save_results_TD(precision_dict_sage, recall_dict_sage, F1_dict_sage, ntw_name+"_sage")
+        AUC_list_sage, AP_list_sage, precision_dict_sage, recall_dict_sage, F1_dict_sage = evaluate_model_deep(ntw_torch, model_sage, test_mask, percentile_q_list=percentile_q_list, n_samples=100, device = device, use_intrinsic=use_intrinsic)#, loader=test_loader)
+        save_results_TI(AUC_list_sage, AP_list_sage, ntw_name+"_sage"+intrinsic_str)
+        save_results_TD(precision_dict_sage, recall_dict_sage, F1_dict_sage, ntw_name+"_sage"+intrinsic_str)
 
     if 'gat' in to_test:
         # GAT
@@ -315,10 +344,11 @@ if __name__ == "__main__":
             dropout_rate=param_dict["dropout_rate"]
         ).to(device)
 
-        train_model_deep(ntw_torch, model_gat, train_mask, n_epochs, lr, batch_size, loader = None)
-        AUC_list_gat, AP_list_gat, precision_dict_gat, recall_dict_gat, F1_dict_gat = evaluate_model_deep(ntw_torch, model_gat, test_mask, percentile_q_list=percentile_q_list, n_samples=100, device = device)
-        save_results_TI(AUC_list_gat, AP_list_gat, ntw_name+"_gat")
-        save_results_TD(precision_dict_gat, recall_dict_gat, F1_dict_gat, ntw_name+"_gat")
+        train_model_deep(ntw_torch, model_gat, train_mask, n_epochs, lr, batch_size, loader = None, use_intrinsic=use_intrinsic)
+        AUC_list_gat, AP_list_gat, precision_dict_gat, recall_dict_gat, F1_dict_gat = evaluate_model_deep(ntw_torch, model_gat, test_mask, percentile_q_list=percentile_q_list, n_samples=100, device = device, use_intrinsic=use_intrinsic)
+        
+        save_results_TI(AUC_list_gat, AP_list_gat, ntw_name+"_gat"+intrinsic_str)
+        save_results_TD(precision_dict_gat, recall_dict_gat, F1_dict_gat, ntw_name+"_gat"+intrinsic_str)
 
     if 'gin' in to_test:
         # GIN
@@ -340,7 +370,7 @@ if __name__ == "__main__":
             dropout_rate=param_dict["dropout_rate"]
         ).to(device)
 
-        train_model_deep(ntw_torch, model_gin, train_mask, n_epochs, lr, batch_size, loader = None)
-        AUC_list_gin, AP_list_gin, precision_dict_gin, recall_dict_gin, F1_dict_gin = evaluate_model_deep(ntw_torch, model_gin, test_mask, percentile_q_list=percentile_q_list, n_samples=100, device = device)
-        save_results_TI(AUC_list_gin, AP_list_gin, ntw_name+"_gin")
-        save_results_TD(precision_dict_gin, recall_dict_gin, F1_dict_gin, ntw_name+"_gin")
+        train_model_deep(ntw_torch, model_gin, train_mask, n_epochs, lr, batch_size, loader = None, use_intrinsic=use_intrinsic)
+        AUC_list_gin, AP_list_gin, precision_dict_gin, recall_dict_gin, F1_dict_gin = evaluate_model_deep(ntw_torch, model_gin, test_mask, percentile_q_list=percentile_q_list, n_samples=100, device = device, use_intrinsic=use_intrinsic)
+        save_results_TI(AUC_list_gin, AP_list_gin, ntw_name+"_gin"+intrinsic_str)
+        save_results_TD(precision_dict_gin, recall_dict_gin, F1_dict_gin, ntw_name+"_gin"+intrinsic_str)

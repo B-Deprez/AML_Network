@@ -57,7 +57,7 @@ def positional_features(
         n_layers_decoder: int = 2,
         hidden_dim_decoder: int = 5,
         ntw_name: str = None,
-        use_intrinsic: bool = True
+        use_intrinsic: bool = False
         ):
     
     print("intrinsic and summary: ")
