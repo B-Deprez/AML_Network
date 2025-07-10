@@ -13,12 +13,22 @@ from src.data.DatasetConstruction import *
 from src.methods.evaluation import *
 
 if __name__ == "__main__":
-    to_test =[
-        "intrinsic",
-        "positional",
-        "deepwalk",
-        "node2vec"
-    ]
+    use_intrinsic = False
+    intrinsic_str = "_intrinsic" if use_intrinsic else "_no_intrinsic"
+
+    if use_intrinsic:
+        to_test =[
+            "intrinsic",
+            "positional",
+            "deepwalk",
+            "node2vec"
+        ]
+    else:
+        to_test = [
+            "positional",
+            "deepwalk",
+            "node2vec"
+        ]
 
     ### Load Dataset ###
     ntw_name = "elliptic"
@@ -72,8 +82,8 @@ if __name__ == "__main__":
         )
 
         AUC_list_intr, AP_list_intr, precision_dict_intr, recall_dict_intr, F1_dict_intr = evaluate_if(model_intrinsic, X_test, y_test, percentile_q_list=percentile_q_list)
-        save_results_TI(AUC_list_intr, AP_list_intr, "intrinsic_unsupervised")
-        save_results_TD(precision_dict_intr, recall_dict_intr, F1_dict_intr, "intrinsic_unsupervised")
+        save_results_TI(AUC_list_intr, AP_list_intr, ntw_name+"_intrinsic_unsupervised")
+        save_results_TD(precision_dict_intr, recall_dict_intr, F1_dict_intr, ntw_name+"_intrinsic_unsupervised")
 
     ### Positional features ###
     x_intrinsic = ntw.get_features_torch()
@@ -94,7 +104,8 @@ if __name__ == "__main__":
             alpha_ppr=None,
             fraud_dict_train=None,
             fraud_dict_test=fraud_dict,
-            ntw_name=ntw_name+"_test"
+            ntw_name=ntw_name+"_test", 
+            use_intrinsic=use_intrinsic
         )
 
         x = torch.tensor(features_df.drop(["PSP","fraud"], axis=1).values, dtype=torch.float32).to(device_decoder)
@@ -110,18 +121,14 @@ if __name__ == "__main__":
         )
 
         AUC_list_pos, AP_list_pos, precision_dict_pos, recall_dict_pos, F1_dict_pos = evaluate_if(model_pos, x, y, percentile_q_list=percentile_q_list)
-        save_results_TI(AUC_list_pos, AP_list_pos, "positional_unsupervised")
-        save_results_TD(precision_dict_pos, recall_dict_pos, F1_dict_pos, "positional_unsupervised")
+        save_results_TI(AUC_list_pos, AP_list_pos, ntw_name+"_positional_unsupervised"+intrinsic_str)
+        save_results_TD(precision_dict_pos, recall_dict_pos, F1_dict_pos, ntw_name+"_positional_unsupervised"+intrinsic_str)
 
     #### Troch models ####
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
     ntw_torch = ntw.get_network_torch().to(device)
     ntw_torch.x = ntw_torch.x[:,1:]
-    edge_index = ntw_torch.edge_index
-    num_features = ntw_torch.num_features
-    output_dim = 2
-    batch_size=128
 
     ## Deepwalk
     if 'deepwalk' in to_test:
@@ -149,9 +156,12 @@ if __name__ == "__main__":
         x = model_deepwalk()
         # Move x and x_intrinsic to cpu, so that they can be concatenated
         x = x.detach().to('cpu')
-        x_intrinsic = x_intrinsic.to('cpu')
         mask = torch.logical_or(train_mask, test_mask)
-        x = torch.cat((x, x_intrinsic), 1)[mask]
+        if use_intrinsic:
+            x_intrinsic = x_intrinsic.to('cpu')
+            x = torch.cat((x, x_intrinsic), 1)[mask]
+        else:
+            x = x[mask]
         y = ntw_torch.y.clone().detach().to('cpu')[mask]
         max_features = int(np.ceil(param_dict["max_features_dec%"]*x.shape[1]/10))
 
@@ -163,8 +173,8 @@ if __name__ == "__main__":
         )
 
         AUC_list_dw, AP_list_dw, precision_dict_dw, recall_dict_dw, F1_dict_dw = evaluate_if(model_deepwalk, x, y, percentile_q_list=percentile_q_list)
-        save_results_TI(AUC_list_dw, AP_list_dw, "deepwalk_unsupervised")
-        save_results_TD(precision_dict_dw, recall_dict_dw, F1_dict_dw, "deepwalk_unsupervised")
+        save_results_TI(AUC_list_dw, AP_list_dw, ntw_name+"_deepwalk_unsupervised"+intrinsic_str)
+        save_results_TD(precision_dict_dw, recall_dict_dw, F1_dict_dw, ntw_name+"_deepwalk_unsupervised"+intrinsic_str)
 
     if 'node2vec' in to_test:
         ## node2vec
@@ -192,9 +202,12 @@ if __name__ == "__main__":
         x = model_node2vec()
         # Move x and x_intrinsic to cpu, so that they can be concatenated
         x = x.detach().to('cpu')
-        x_intrinsic = x_intrinsic.to('cpu')
         mask = torch.logical_or(train_mask, test_mask)
-        x = torch.cat((x, x_intrinsic), 1)[mask]
+        if use_intrinsic:
+            x_intrinsic = x_intrinsic.to('cpu')
+            x = torch.cat((x, x_intrinsic), 1)[mask]
+        else:
+            x = x[mask]
         y = ntw_torch.y.clone().detach().to('cpu')[mask]
         max_features = int(np.ceil(param_dict["max_features_dec%"]*x.shape[1]/10))
 
@@ -206,5 +219,5 @@ if __name__ == "__main__":
         )
 
         AUC_list_n2v, AP_list_n2v, precision_dict_n2v, recall_dict_n2v, F1_dict_n2v = evaluate_if(model_node2vec, x, y, percentile_q_list=percentile_q_list)
-        save_results_TI(AUC_list_n2v, AP_list_n2v, "node2vec_unsupervised")
-        save_results_TD(precision_dict_n2v, recall_dict_n2v, F1_dict_n2v, "node2vec_unsupervised")
+        save_results_TI(AUC_list_n2v, AP_list_n2v, ntw_name+"_node2vec_unsupervised"+intrinsic_str)
+        save_results_TD(precision_dict_n2v, recall_dict_n2v, F1_dict_n2v, ntw_name+"_node2vec_unsupervised"+intrinsic_str)
