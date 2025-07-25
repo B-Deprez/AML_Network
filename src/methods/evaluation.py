@@ -99,47 +99,36 @@ def stratified_sampling(x_test, y_test):
     x_new, y_new = resample(x_test, y_test, n_samples=n_samples, stratify=y_test)
     return(x_new, y_new)
 
-def evaluate_model_shallow(model, x_test, y_test, percentile_q_list = [99], n_samples=100, device = "cpu"):
-    AUC_list = []
-    AP_list = []
-    
-    precision_dict = dict()
-    recall_dict = dict()
-    F1_dict = dict()
-    for percentile_q in percentile_q_list:
-        precision_dict[percentile_q] = []
-        recall_dict[percentile_q] = []
-        F1_dict[percentile_q] = []
-
+def evaluate_model_shallow_AUC(model, x_test, y_test, device = "cpu"):
     model.eval()
 
-    for _ in tqdm(range(n_samples)):
-        x_new, y_new = stratified_sampling(x_test.cpu().detach().numpy(), y_test.cpu().detach().numpy())
-        x_new = torch.from_numpy(x_new).to(device)
-        y_new = torch.from_numpy(y_new).to(device)
-        y_pred = model(x_new)
-        y_pred = y_pred.softmax(dim=1)
+    x_test = x_test.to(device)
+    y_test = y_test.to(device)
+    y_pred = model(x_test)
+    y_pred = y_pred.softmax(dim=1)
 
-        AUC = roc_auc_score(y_new.cpu().detach().numpy(), y_pred.cpu().detach().numpy()[:,1])
-        AP = average_precision_score(y_new.cpu().detach().numpy(), y_pred.cpu().detach().numpy()[:,1])
+    AUC = roc_auc_score(y_test.cpu().detach().numpy(), y_pred.cpu().detach().numpy()[:,1])
+    AP = average_precision_score(y_test.cpu().detach().numpy(), y_pred.cpu().detach().numpy()[:,1])
 
-        AUC_list.append(AUC)
-        AP_list.append(AP)
+    return(AUC, AP)
 
-        for percentile_q in percentile_q_list:
-            cutoff = np.percentile(y_pred.cpu().detach().numpy()[:,1], percentile_q)
-            y_pred_hard = (y_pred[:,1] >= cutoff)*1
-            precision = precision_score(y_new.cpu().detach().numpy(), y_pred_hard.cpu().detach().numpy())
-            recall = recall_score(y_new.cpu().detach().numpy(), y_pred_hard.cpu().detach().numpy())
-            F1 = f1_score(y_new.cpu().detach().numpy(), y_pred_hard.cpu().detach().numpy())
+def evaluate_model_shallow_PRF(model, x_test, y_test, percentile_q = 99, device = "cpu"):
+    model.eval()
 
-            precision_dict[percentile_q].append(precision)
-            recall_dict[percentile_q].append(recall)
-            F1_dict[percentile_q].append(F1)
+    x_test = x_test.to(device)
+    y_test = y_test.to(device)
+    y_pred = model(x_test)
+    y_pred = y_pred.softmax(dim=1)
 
-    return(AUC_list, AP_list, precision_dict, recall_dict, F1_dict)
+    cutoff = np.percentile(y_pred.cpu().detach().numpy()[:,1], percentile_q)
+    y_pred_hard = (y_pred[:,1] >= cutoff)*1
+    precision = precision_score(y_test.cpu().detach().numpy(), y_pred_hard.cpu().detach().numpy())
+    recall = recall_score(y_test.cpu().detach().numpy(), y_pred_hard.cpu().detach().numpy())
+    F1 = f1_score(y_test.cpu().detach().numpy(), y_pred_hard.cpu().detach().numpy())
 
-def resample_testmask(test_mask, p=0.5):
+    return(precision, recall, F1)
+
+def resample_mask(test_mask, p=0.5):
     sample_size = int(np.floor(test_mask.sum()*p))
     # Get indices where value is True
     true_indices = [i for i, val in enumerate(test_mask) if val]
@@ -184,7 +173,7 @@ def evaluate_model_deep(data, model, test_mask, percentile_q_list = [99], n_samp
     model.eval()
 
     for _ in tqdm(range(n_samples)):
-        test_mask_new = resample_testmask(test_mask)
+        test_mask_new = resample_mask(test_mask)
         if loader is None:
             model.eval()
             if use_intrinsic:
@@ -225,6 +214,69 @@ def evaluate_model_deep(data, model, test_mask, percentile_q_list = [99], n_samp
             F1_dict[percentile_q].append(F1)
 
     return(AUC_list, AP_list, precision_dict, recall_dict, F1_dict)
+
+def evaluate_model_deep_AUC(data, model, test_mask, device="cpu", loader=None, use_intrinsic=True):
+    model.eval()
+    test_mask_new = resample_mask(test_mask)
+    if loader is None:
+        model.eval()
+        if use_intrinsic:
+            features = data.x
+        else:
+            features = torch.ones((data.x.shape[0], 1), dtype=torch.float32).to(device)
+        out, h = model(features, data.edge_index.to(device))
+        y_hat = out[test_mask_new].to(device) # Prediction
+        y = data.y[test_mask_new].to(device) # True value
+        
+    else:
+        batch = next(iter(loader))
+        batch = batch.to(device, 'edge_index')
+        if use_intrinsic:
+            features = batch.x
+        else:
+            features = torch.ones((batch.x.shape[0], 1), dtype=torch.float32).to(device)
+        out, h = model(features, batch.edge_index)
+        y_hat = out[:batch.batch_size] # Prediction
+        y = batch.y[:batch.batch_size] # True value
+    y_hat  = y_hat.softmax(dim=1) # Get probability of fraud
+    
+    AUC = roc_auc_score(y.cpu().detach().numpy(), y_hat.cpu().detach().numpy()[:,1])
+    AP = average_precision_score(y.cpu().detach().numpy(), y_hat.cpu().detach().numpy()[:,1])
+
+    return(AUC, AP)
+    
+def evaluate_model_deep_PRF(data, model, test_mask, percentile_q=90, device="cpu", loader=None, use_intrinsic=True):
+    model.eval()
+    test_mask_new = resample_mask(test_mask)
+    if loader is None:
+        model.eval()
+        if use_intrinsic:
+            features = data.x
+        else:
+            features = torch.ones((data.x.shape[0], 1), dtype=torch.float32).to(device)
+        out, h = model(features, data.edge_index.to(device))
+        y_hat = out[test_mask_new].to(device) # Prediction
+        y = data.y[test_mask_new].to(device) # True value
+        
+    else:
+        batch = next(iter(loader))
+        batch = batch.to(device, 'edge_index')
+        if use_intrinsic:
+            features = batch.x
+        else:
+            features = torch.ones((batch.x.shape[0], 1), dtype=torch.float32).to(device)
+        out, h = model(features, batch.edge_index)
+        y_hat = out[:batch.batch_size] # Prediction
+        y = batch.y[:batch.batch_size] # True value
+    y_hat  = y_hat.softmax(dim=1) # Get probability of fraud
+    
+    cutoff = np.percentile(y_hat.cpu().detach().numpy()[:,1], percentile_q)
+    y_hat_hard = (y_hat[:,1] >= cutoff)*1
+    precision = precision_score(y.cpu().detach().numpy(), y_hat_hard.cpu().detach().numpy())
+    recall = recall_score(y.cpu().detach().numpy(), y_hat_hard.cpu().detach().numpy())
+    F1 = f1_score(y.cpu().detach().numpy(), y_hat_hard.cpu().detach().numpy())
+
+    return(precision, recall, F1)
 
 def evaluate_if(model, x_test, y_test, percentile_q_list = [99], n_samples=100):
     AUC_list = []

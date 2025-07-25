@@ -219,7 +219,8 @@ def objective_gin(trial):
 
 if __name__ == "__main__":
     ### Load Dataset ###
-    ntw_name = "elliptic"
+    ntw_name = "cora"
+    n_trials = 5
 
     if ntw_name == "ibm":
         ntw = load_ibm()
@@ -248,7 +249,7 @@ if __name__ == "__main__":
         print("="*10)
         print("intrinsic: ")
         study = optuna.create_study(direction='maximize')
-        study.optimize(objective_intrinsic, n_trials=100)
+        study.optimize(objective_intrinsic, n_trials=n_trials)
         intrinsic_params = study.best_params   
         intrinsic_values = study.best_value
         with open("res/intrinsic_params_"+ntw_name+".txt", "w") as f:
@@ -265,7 +266,7 @@ if __name__ == "__main__":
         print("="*10)
         print("positional: ")
         study = optuna.create_study(direction='maximize')
-        study.optimize(objective_positional, n_trials=100)
+        study.optimize(objective_positional, n_trials=n_trials)
         positional_params = study.best_params
         positional_values = study.best_value
         with open("res/positional_params_"+ntw_name+".txt", "w") as f:
@@ -289,7 +290,7 @@ if __name__ == "__main__":
         print("="*10)
         print("deepwalk: ")
         study = optuna.create_study(direction='maximize')
-        study.optimize(objective_deepwalk, n_trials=100)
+        study.optimize(objective_deepwalk, n_trials=n_trials)
         deepwalk_params = study.best_params
         deepwalk_values = study.best_value
         with open("res/deepwalk_params_"+ntw_name+".txt", "w") as f:
@@ -302,7 +303,7 @@ if __name__ == "__main__":
         print("="*10)
         print("node2vec: ")
         study = optuna.create_study(direction='maximize')
-        study.optimize(objective_node2vec, n_trials=100)
+        study.optimize(objective_node2vec, n_trials=n_trials)
         node2vec_params = study.best_params
         node2vec_values = study.best_value
         with open("res/node2vec_params_"+ntw_name+".txt", "w") as f:
@@ -316,7 +317,7 @@ if __name__ == "__main__":
         print("="*10)      
         print("GCN: ")
         study = optuna.create_study(direction='maximize')
-        study.optimize(objective_gcn, n_trials=100)
+        study.optimize(objective_gcn, n_trials=n_trials)
         gcn_params = study.best_params
         gcn_values = study.best_value
         with open("res/gcn_params_"+ntw_name+".txt", "w") as f:
@@ -329,7 +330,7 @@ if __name__ == "__main__":
         print("="*10)
         print("GraphSAGE: ")
         study = optuna.create_study(direction='maximize')
-        study.optimize(objective_sage, n_trials=100)
+        study.optimize(objective_sage, n_trials=n_trials)
         sage_params = study.best_params
         sage_values = study.best_value
         with open("res/sage_params_"+ntw_name+".txt", "w") as f:
@@ -342,7 +343,7 @@ if __name__ == "__main__":
         print("="*10)
         print("GAT: ")
         study = optuna.create_study(direction='maximize')
-        study.optimize(objective_gat, n_trials=100)
+        study.optimize(objective_gat, n_trials=n_trials)
         gat_params = study.best_params
         gat_values = study.best_value
         with open("res/gat_params_"+ntw_name+".txt", "w") as f:
@@ -355,7 +356,7 @@ if __name__ == "__main__":
         print("="*10)
         print("GIN: ")
         study = optuna.create_study(direction='maximize')
-        study.optimize(objective_gin, n_trials=100)
+        study.optimize(objective_gin, n_trials=n_trials)
         gin_params = study.best_params
         gin_values = study.best_value
         with open("res/gin_params_"+ntw_name+".txt", "w") as f:

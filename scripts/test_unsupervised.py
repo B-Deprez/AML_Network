@@ -31,7 +31,7 @@ if __name__ == "__main__":
         ]
 
     ### Load Dataset ###
-    ntw_name = "elliptic"
+    ntw_name = "ibm"
 
     if ntw_name == "ibm":
         ntw = load_ibm()

@@ -278,11 +278,11 @@ def GNN_features(
     if use_intrinsic:
         for epoch in range(n_epochs):
             loss_train = train_GNN_feat()
-            print('epoch: ', epoch, 'train loss: ', loss_train.item())
+            #print('epoch: ', epoch, 'train loss: ', loss_train.item())
     else:
         for epoch in range(n_epochs):
             loss_train = train_GNN_ones()
-            print('epoch: ', epoch, 'train loss: ', loss_train.item())
+            #print('epoch: ', epoch, 'train loss: ', loss_train.item())
     
     model.eval()
     if test_loader is None:

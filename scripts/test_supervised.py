@@ -14,7 +14,8 @@ from src.data.DatasetConstruction import *
 from src.methods.evaluation import *
 
 if __name__ == "__main__":
-    use_intrinsic = False
+    use_intrinsic = True
+    n_samples = 10
     intrinsic_str = "_intrinsic" if use_intrinsic else "_no_intrinsic"
 
     if use_intrinsic:
@@ -40,7 +41,7 @@ if __name__ == "__main__":
         ]
 
     ### Load Dataset ###
-    ntw_name = "elliptic"
+    ntw_name = "cora"
 
     if ntw_name == "ibm":
         ntw = load_ibm()
@@ -78,9 +79,35 @@ if __name__ == "__main__":
         string_dict = params[0].strip()
         param_dict = eval(string_dict)
 
-        model_trained = train_model_shallow(X_train, y_train, param_dict["n_epochs_decoder"], param_dict["lr"], n_layers_decoder=param_dict["n_layers_decoder"], hidden_dim_decoder=param_dict["hidden_dim_decoder"], device_decoder=device_decoder)
+        AUC_list_intr = []
+        AP_list_intr = []
+        precision_dict_intr = dict()
+        recall_dict_intr = dict()
+        F1_dict_intr = dict()
+        for percentile_q in percentile_q_list:
+            precision_dict_intr[percentile_q] = []
+            recall_dict_intr[percentile_q] = []
+            F1_dict_intr[percentile_q] = []
 
-        AUC_list_intr, AP_list_intr, precision_dict_intr, recall_dict_intr, F1_dict_intr = evaluate_model_shallow(model_trained, X_test, y_test, percentile_q_list=percentile_q_list, device=device_decoder)
+        for _ in tqdm(range(n_samples)):
+            X_new, y_new = stratified_sampling(X_train.cpu().detach().numpy(), y_train.cpu().detach().numpy())
+            X_new = torch.from_numpy(X_new).to(device_decoder)
+            y_new = torch.from_numpy(y_new).to(device_decoder)
+
+            model_trained = train_model_shallow(X_new, y_new, param_dict["n_epochs_decoder"], param_dict["lr"], n_layers_decoder=param_dict["n_layers_decoder"], hidden_dim_decoder=param_dict["hidden_dim_decoder"], device_decoder=device_decoder)
+            
+            #Threshold independent metrics
+            AUC, AP = evaluate_model_shallow_AUC(model_trained, X_test, y_test, device_decoder)
+            AUC_list_intr.append(AUC)
+            AP_list_intr.append(AP)
+
+            #Threshold dependent metrics
+            for percentile_q in percentile_q_list:
+                precision, recall, F1 = evaluate_model_shallow_PRF(model_trained, X_test, y_test, percentile_q=percentile_q, device=device_decoder)
+                precision_dict_intr[percentile_q].append(precision)
+                recall_dict_intr[percentile_q].append(recall)
+                F1_dict_intr[percentile_q].append(F1)
+
         save_results_TI(AUC_list_intr, AP_list_intr, ntw_name+"_intrinsic")
         save_results_TD(precision_dict_intr, recall_dict_intr, F1_dict_intr, ntw_name+"_intrinsic")
 
@@ -117,17 +144,42 @@ if __name__ == "__main__":
         x_test = torch.tensor(features_df_test.drop(["PSP","fraud"], axis=1).values, dtype=torch.float32).to(device_decoder)
         y_test = torch.tensor(features_df_test["fraud"].values, dtype=torch.long).to(device_decoder)
 
-        model_trained = train_model_shallow(
-            x_train,
-            y_train,
-            param_dict["n_epochs_decoder"],
-            param_dict["lr"],
-            n_layers_decoder=param_dict["n_layers_decoder"],
-            hidden_dim_decoder=param_dict["hidden_dim_decoder"],
-            device_decoder=device_decoder
-        )
-        AUC_list_pos, AP_list_pos, precision_dict_pos, recall_dict_pos, F1_dict_pos = evaluate_model_shallow(model_trained, x_test, y_test, percentile_q_list=percentile_q_list, device=device_decoder)
-        
+        AUC_list_pos = []
+        AP_list_pos = []
+        precision_dict_pos = dict()
+        recall_dict_pos = dict()
+        F1_dict_pos = dict()
+        for percentile_q in percentile_q_list:
+            precision_dict_pos[percentile_q] = []
+            recall_dict_pos[percentile_q] = []
+            F1_dict_pos[percentile_q] = []
+
+        for _ in tqdm(range(n_samples)):
+            X_new, y_new = stratified_sampling(x_train.cpu().detach().numpy(), y_train.cpu().detach().numpy())
+            X_new = torch.from_numpy(X_new).to(device_decoder)
+            y_new = torch.from_numpy(y_new).to(device_decoder)
+            model_trained = train_model_shallow(
+                X_new,
+                y_new,
+                param_dict["n_epochs_decoder"],
+                param_dict["lr"],
+                n_layers_decoder=param_dict["n_layers_decoder"],
+                hidden_dim_decoder=param_dict["hidden_dim_decoder"],
+                device_decoder=device_decoder
+            )
+
+            # Threshold independent metrics
+            AUC, AP = evaluate_model_shallow_AUC(model_trained, x_test, y_test, device_decoder)
+            AUC_list_pos.append(AUC)
+            AP_list_pos.append(AP)
+
+            # Threshold dependent metrics
+            for percentile_q in percentile_q_list:
+                precision, recall, F1 = evaluate_model_shallow_PRF(model_trained, x_test, y_test, percentile_q=percentile_q, device=device_decoder)
+                precision_dict_pos[percentile_q].append(precision)
+                recall_dict_pos[percentile_q].append(recall)
+                F1_dict_pos[percentile_q].append(F1)
+
         save_results_TI(AUC_list_pos, AP_list_pos, ntw_name+"_positional"+intrinsic_str)
         save_results_TD(precision_dict_pos, recall_dict_pos, F1_dict_pos, ntw_name+"_positional"+intrinsic_str)
 
@@ -178,8 +230,32 @@ if __name__ == "__main__":
         y_train = ntw_torch.y[train_mask].to(device_decoder)
         y_test = ntw_torch.y[test_mask].to(device_decoder).squeeze()
 
-        model_trained = train_model_shallow(x_train, y_train, param_dict["n_epochs_decoder"], param_dict["lr"], device_decoder=device_decoder)
-        AUC_list_dw, AP_list_dw, precision_dict_dw, recall_dict_dw, F1_dict_dw = evaluate_model_shallow(model_trained, x_test, y_test, percentile_q_list=percentile_q_list, device=device_decoder)
+        AUC_list_dw = []
+        AP_list_dw = []
+        precision_dict_dw = dict()
+        recall_dict_dw = dict()
+        F1_dict_dw = dict()
+        for percentile_q in percentile_q_list:
+            precision_dict_dw[percentile_q] = []
+            recall_dict_dw[percentile_q] = []
+            F1_dict_dw[percentile_q] = []
+
+        for _ in tqdm(range(n_samples)):
+            X_new, y_new = stratified_sampling(x_train.cpu().detach().numpy(), y_train.cpu().detach().numpy())
+            X_new = torch.from_numpy(X_new).to(device_decoder)
+            y_new = torch.from_numpy(y_new).to(device_decoder)
+            model_trained = train_model_shallow(X_new, y_new, param_dict["n_epochs_decoder"], param_dict["lr"], device_decoder=device_decoder)
+
+            AUC_dw, AP_dw = evaluate_model_shallow_AUC(model_trained, x_test, y_test, device=device_decoder)
+            AUC_list_dw.append(AUC_dw)
+            AP_list_dw.append(AP_dw)
+
+            for percentile_q in percentile_q_list:
+                precision, recall, F1 = evaluate_model_shallow_PRF(model_trained, x_test, y_test, percentile_q=percentile_q, device=device_decoder)
+                precision_dict_dw[percentile_q].append(precision)
+                recall_dict_dw[percentile_q].append(recall)
+                F1_dict_dw[percentile_q].append(F1)
+
 
         save_results_TI(AUC_list_dw, AP_list_dw, ntw_name+"_deepwalk"+intrinsic_str)
         save_results_TD(precision_dict_dw, recall_dict_dw, F1_dict_dw, ntw_name+"_deepwalk"+intrinsic_str)
@@ -218,9 +294,33 @@ if __name__ == "__main__":
         y_train = ntw_torch.y[train_mask].to(device_decoder)
         y_test = ntw_torch.y[test_mask].to(device_decoder).squeeze()
 
-        model_trained = train_model_shallow(x_train, y_train, param_dict["n_epochs_decoder"], param_dict["lr"], device_decoder=device_decoder)
-        AUC_list_n2v, AP_list_n2v, precision_dict_n2v, recall_dict_n2v, F1_dict_n2v = evaluate_model_shallow(model_trained, x_test, y_test, percentile_q_list=percentile_q_list, device=device_decoder)
-        
+        AUC_list_n2v = []
+        AP_list_n2v = []
+        precision_dict_n2v = dict()
+        recall_dict_n2v = dict()
+        F1_dict_n2v = dict()
+
+        for percentile_q in percentile_q_list:
+            precision_dict_n2v[percentile_q] = []
+            recall_dict_n2v[percentile_q] = []
+            F1_dict_n2v[percentile_q] = []
+
+        for _ in tqdm(range(n_samples)):
+            X_new, y_new = stratified_sampling(x_train.cpu().detach().numpy(), y_train.cpu().detach().numpy())
+            X_new = torch.from_numpy(X_new).to(device_decoder)
+            y_new = torch.from_numpy(y_new).to(device_decoder)
+            model_trained = train_model_shallow(X_new, y_new, param_dict["n_epochs_decoder"], param_dict["lr"], device_decoder=device_decoder)
+
+            AUC_n2v, AP_n2v = evaluate_model_shallow_AUC(model_trained, x_test, y_test, device=device_decoder)
+            AUC_list_n2v.append(AUC_n2v)
+            AP_list_n2v.append(AP_n2v)
+
+            for percentile_q in percentile_q_list:
+                precision, recall, F1 = evaluate_model_shallow_PRF(model_trained, x_test, y_test, percentile_q=percentile_q, device=device_decoder)
+                precision_dict_n2v[percentile_q].append(precision)
+                recall_dict_n2v[percentile_q].append(recall)
+                F1_dict_n2v[percentile_q].append(F1)
+
         save_results_TI(AUC_list_n2v, AP_list_n2v, ntw_name+"_node2vec"+intrinsic_str)
         save_results_TD(precision_dict_n2v, recall_dict_n2v, F1_dict_n2v, ntw_name+"_node2vec"+intrinsic_str)
 
@@ -235,18 +335,41 @@ if __name__ == "__main__":
         n_epochs = param_dict["n_epochs"]
         lr = param_dict["lr"]
 
-        model_GCN = GCN(
-            edge_index, 
-            num_features,
-            hidden_dim=param_dict["hidden_dim"],
-            embedding_dim=param_dict["embedding_dim"],
-            output_dim=output_dim,
-            n_layers=param_dict["n_layers"],
-            dropout_rate=param_dict["dropout_rate"]
-        ).to(device)
+        AUC_list_gcn = []
+        AP_list_gcn = []
 
-        train_model_deep(ntw_torch, model_GCN, train_mask, n_epochs, lr, batch_size, loader = None, use_intrinsic=use_intrinsic)
-        AUC_list_gcn, AP_list_gcn, precision_dict_gcn, recall_dict_gcn, F1_dict_gcn = evaluate_model_deep(ntw_torch, model_GCN, test_mask, percentile_q_list=percentile_q_list, n_samples=100, device = device, use_intrinsic=use_intrinsic)
+        precision_dict_gcn = dict()
+        recall_dict_gcn = dict()
+        F1_dict_gcn = dict()
+        for percentile_q in percentile_q_list:
+            precision_dict_gcn[percentile_q] = []
+            recall_dict_gcn[percentile_q] = []
+            F1_dict_gcn[percentile_q] = []
+
+        for _ in tqdm(range(n_samples)):
+            # Re-initialize the model for each sample
+            model_GCN = GCN(
+                edge_index, 
+                num_features,
+                hidden_dim=param_dict["hidden_dim"],
+                embedding_dim=param_dict["embedding_dim"],
+                output_dim=output_dim,
+                n_layers=param_dict["n_layers"],
+                dropout_rate=param_dict["dropout_rate"]
+            ).to(device)
+
+            train_mask_new = resample_mask(train_mask)
+            train_model_deep(ntw_torch, model_GCN, train_mask_new, n_epochs, lr, batch_size, loader = None, use_intrinsic=use_intrinsic)
+
+            AUC, PR = evaluate_model_deep_AUC(ntw_torch, model_GCN, test_mask, device = device, use_intrinsic=use_intrinsic)
+            AUC_list_gcn.append(AUC)
+            AP_list_gcn.append(PR)
+
+            for percentile_q in percentile_q_list:
+                precision, recall, F1 = evaluate_model_deep_PRF(ntw_torch, model_GCN, test_mask, percentile_q=percentile_q, device = device, use_intrinsic=use_intrinsic)
+                precision_dict_gcn[percentile_q].append(precision)
+                recall_dict_gcn[percentile_q].append(recall)
+                F1_dict_gcn[percentile_q].append(F1)
 
         save_results_TI(AUC_list_gcn, AP_list_gcn, ntw_name+"_gcn"+intrinsic_str)
         save_results_TD(precision_dict_gcn, recall_dict_gcn, F1_dict_gcn, ntw_name+"_gcn"+intrinsic_str)
@@ -264,62 +387,86 @@ if __name__ == "__main__":
         #num_neighbors = param_dict["num_neighbors"]
         n_layers = param_dict["n_layers"]
 
-        model_sage = GraphSAGE(
-            edge_index, 
-            num_features,
-            hidden_dim=param_dict["hidden_dim"],
-            embedding_dim=param_dict["embedding_dim"],
-            output_dim=output_dim,
-            n_layers=n_layers,
-            dropout_rate=param_dict["dropout_rate"],
-            sage_aggr = param_dict["sage_aggr"]
-        ).to(device)
+        AUC_list_sage = []
+        AP_list_sage = []
 
-        #train_loader = NeighborLoader(
-        #    ntw_torch, 
-        #    num_neighbors=[num_neighbors]*n_layers, 
-        #    input_nodes=train_mask,
-        #    batch_size = batch_size, 
-        #    shuffle=True,
-        #    num_workers=0
-        #)
+        precision_dict_sage = dict()
+        recall_dict_sage = dict()
+        F1_dict_sage = dict()
+        for percentile_q in percentile_q_list:
+            precision_dict_sage[percentile_q] = []
+            recall_dict_sage[percentile_q] = []
+            F1_dict_sage[percentile_q] = []
 
-        #test_loader = NeighborLoader(
-        #    ntw_torch,
-        #    num_neighbors=[num_neighbors]*n_layers,
-        #    input_nodes=test_mask,
-        #    batch_size = int(test_mask.sum()),
-        #    shuffle=False,
-        #    num_workers=0
-        #)
+        for _ in tqdm(range(n_samples)):
+            # Re-initialize the model for each sample 
+            model_sage = GraphSAGE(
+                edge_index, 
+                num_features,
+                hidden_dim=param_dict["hidden_dim"],
+                embedding_dim=param_dict["embedding_dim"],
+                output_dim=output_dim,
+                n_layers=n_layers,
+                dropout_rate=param_dict["dropout_rate"],
+                sage_aggr = param_dict["sage_aggr"]
+            ).to(device)
 
-        class_weights = torch.tensor([1.0, (1 / percentage_labels) - 1], device=device)  # Calculate class weights.
-        print(class_weights)
-        optimizer = torch.optim.Adam(model_sage.parameters(), lr=lr, weight_decay=5e-4)  # Define optimizer.
-        criterion = nn.CrossEntropyLoss(weight=class_weights)  # Define weighted loss function.
+            train_mask_new = resample_mask(train_mask)
 
-        if use_intrinsic:
-            features =ntw_torch.x
-        else:
-            features = torch.ones((ntw_torch.x.shape[0], 1),dtype=torch.float32).to(device)
+            #train_loader = NeighborLoader(
+            #    ntw_torch, 
+            #    num_neighbors=[num_neighbors]*n_layers, 
+            #    input_nodes=train_mask,
+            #    batch_size = batch_size, 
+            #    shuffle=True,
+            #    num_workers=0
+            #)
 
-        def train_GNN():
-            model_sage.train()
-            optimizer.zero_grad()
-            y_hat, h = model_sage(features, ntw_torch.edge_index.to(device))
-            y = ntw_torch.y
-            loss = criterion(y_hat[train_mask], y[train_mask])
-            loss.backward()
-            optimizer.step()
+            #test_loader = NeighborLoader(
+            #    ntw_torch,
+            #    num_neighbors=[num_neighbors]*n_layers,
+            #    input_nodes=test_mask,
+            #    batch_size = int(test_mask.sum()),
+            #    shuffle=False,
+            #    num_workers=0
+            #)
 
-            return(loss)
-        print('n_epochs: ', n_epochs)
-        for _ in range(n_epochs):
-            loss_train = train_GNN()
-            print('Epoch: {:03d}, Loss: {:.4f}'.format(_, loss_train))
+            class_weights = torch.tensor([1.0, (1 / percentage_labels) - 1], device=device)  # Calculate class weights.
+            #print(class_weights)
+            optimizer = torch.optim.Adam(model_sage.parameters(), lr=lr, weight_decay=5e-4)  # Define optimizer.
+            criterion = nn.CrossEntropyLoss(weight=class_weights)  # Define weighted loss function.
 
-        #train_model_deep(ntw_torch, model_sage, train_mask, n_epochs, lr, batch_size)#, loader = train_loader)
-        AUC_list_sage, AP_list_sage, precision_dict_sage, recall_dict_sage, F1_dict_sage = evaluate_model_deep(ntw_torch, model_sage, test_mask, percentile_q_list=percentile_q_list, n_samples=100, device = device, use_intrinsic=use_intrinsic)#, loader=test_loader)
+            if use_intrinsic:
+                features =ntw_torch.x
+            else:
+                features = torch.ones((ntw_torch.x.shape[0], 1),dtype=torch.float32).to(device)
+
+            def train_GNN():
+                model_sage.train()
+                optimizer.zero_grad()
+                y_hat, h = model_sage(features, ntw_torch.edge_index.to(device))
+                y = ntw_torch.y
+                loss = criterion(y_hat[train_mask_new], y[train_mask_new])
+                loss.backward()
+                optimizer.step()
+
+                return(loss)
+            #print('n_epochs: ', n_epochs)
+            for _ in range(n_epochs):
+                loss_train = train_GNN()
+                #print('Epoch: {:03d}, Loss: {:.4f}'.format(_, loss_train))
+
+            #train_model_deep(ntw_torch, model_sage, train_mask, n_epochs, lr, batch_size)#, loader = train_loader)
+            AUC, AP = evaluate_model_deep_AUC(ntw_torch, model_sage, test_mask, device = device, use_intrinsic=use_intrinsic)
+            AUC_list_sage.append(AUC)
+            AP_list_sage.append(AP)
+            for percentile_q in percentile_q_list:
+                precision, recall, F1 = evaluate_model_deep_PRF(ntw_torch, model_sage, test_mask, percentile_q=percentile_q, device = device, use_intrinsic=use_intrinsic)
+                precision_dict_sage[percentile_q].append(precision)
+                recall_dict_sage[percentile_q].append(recall)
+                F1_dict_sage[percentile_q].append(F1)
+
+        
         save_results_TI(AUC_list_sage, AP_list_sage, ntw_name+"_sage"+intrinsic_str)
         save_results_TD(precision_dict_sage, recall_dict_sage, F1_dict_sage, ntw_name+"_sage"+intrinsic_str)
 
@@ -334,19 +481,40 @@ if __name__ == "__main__":
         n_epochs = param_dict["n_epochs"]
         lr = param_dict["lr"]
 
-        model_gat = GAT(
-            num_features,
-            hidden_dim=param_dict["hidden_dim"],
-            embedding_dim=param_dict["embedding_dim"],
-            output_dim=output_dim,
-            n_layers=param_dict["n_layers"],
-            heads=param_dict["heads"],
-            dropout_rate=param_dict["dropout_rate"]
-        ).to(device)
+        AUC_list_gat = []
+        AP_list_gat = []    
 
-        train_model_deep(ntw_torch, model_gat, train_mask, n_epochs, lr, batch_size, loader = None, use_intrinsic=use_intrinsic)
-        AUC_list_gat, AP_list_gat, precision_dict_gat, recall_dict_gat, F1_dict_gat = evaluate_model_deep(ntw_torch, model_gat, test_mask, percentile_q_list=percentile_q_list, n_samples=100, device = device, use_intrinsic=use_intrinsic)
+        precision_dict_gat = dict()
+        recall_dict_gat = dict()
+        F1_dict_gat = dict()
+        for percentile_q in percentile_q_list:
+            precision_dict_gat[percentile_q] = []
+            recall_dict_gat[percentile_q] = []
+            F1_dict_gat[percentile_q] = []
         
+        for _ in tqdm(range(n_samples)):
+            # Re-initialize the model for each sample
+            model_gat = GAT(
+                num_features,
+                hidden_dim=param_dict["hidden_dim"],
+                embedding_dim=param_dict["embedding_dim"],
+                output_dim=output_dim,
+                n_layers=param_dict["n_layers"],
+                heads=param_dict["heads"],
+                dropout_rate=param_dict["dropout_rate"]
+                ).to(device)
+
+            train_mask_new = resample_mask(train_mask)
+            train_model_deep(ntw_torch, model_gat, train_mask_new, n_epochs, lr, batch_size, loader = None, use_intrinsic=use_intrinsic)
+            AUC, AP = evaluate_model_deep_AUC(ntw_torch, model_gat, test_mask, device = device, use_intrinsic=use_intrinsic)
+            AUC_list_gat.append(AUC)
+            AP_list_gat.append(AP)
+            for percentile_q in percentile_q_list:
+                precision, recall, F1 = evaluate_model_deep_PRF(ntw_torch, model_gat, test_mask, percentile_q=percentile_q, device = device, use_intrinsic=use_intrinsic)
+                precision_dict_gat[percentile_q].append(precision)
+                recall_dict_gat[percentile_q].append(recall)
+                F1_dict_gat[percentile_q].append(F1)
+  
         save_results_TI(AUC_list_gat, AP_list_gat, ntw_name+"_gat"+intrinsic_str)
         save_results_TD(precision_dict_gat, recall_dict_gat, F1_dict_gat, ntw_name+"_gat"+intrinsic_str)
 
@@ -361,16 +529,36 @@ if __name__ == "__main__":
         n_epochs = param_dict["n_epochs"]
         lr = param_dict["lr"]
 
-        model_gin = GIN(
-            num_features,
-            hidden_dim=param_dict["hidden_dim"],
-            embedding_dim=param_dict["embedding_dim"],
-            output_dim=output_dim,
-            n_layers=param_dict["n_layers"],
-            dropout_rate=param_dict["dropout_rate"]
-        ).to(device)
+        AUC_list_gin = []
+        AP_list_gin = []
+        precision_dict_gin = dict()
+        recall_dict_gin = dict()
+        F1_dict_gin = dict()
+        for percentile_q in percentile_q_list:
+            precision_dict_gin[percentile_q] = []
+            recall_dict_gin[percentile_q] = []
+            F1_dict_gin[percentile_q] = []
 
-        train_model_deep(ntw_torch, model_gin, train_mask, n_epochs, lr, batch_size, loader = None, use_intrinsic=use_intrinsic)
-        AUC_list_gin, AP_list_gin, precision_dict_gin, recall_dict_gin, F1_dict_gin = evaluate_model_deep(ntw_torch, model_gin, test_mask, percentile_q_list=percentile_q_list, n_samples=100, device = device, use_intrinsic=use_intrinsic)
+
+        for _ in tqdm(range(n_samples)):
+            model_gin = GIN(
+                num_features,
+                hidden_dim=param_dict["hidden_dim"],
+                embedding_dim=param_dict["embedding_dim"],
+                output_dim=output_dim,
+                n_layers=param_dict["n_layers"],
+                dropout_rate=param_dict["dropout_rate"]
+            ).to(device)
+            train_mask_new = resample_mask(train_mask)
+            train_model_deep(ntw_torch, model_gin, train_mask_new, n_epochs, lr, batch_size, loader = None, use_intrinsic=use_intrinsic)
+            AUC, AP = evaluate_model_deep_AUC(ntw_torch, model_gin, test_mask, device = device, use_intrinsic=use_intrinsic)
+            AUC_list_gin.append(AUC)
+            AP_list_gin.append(AP)
+            for percentile_q in percentile_q_list:
+                precision, recall, F1 = evaluate_model_deep_PRF(ntw_torch, model_gin, test_mask, percentile_q=percentile_q, device = device, use_intrinsic=use_intrinsic)
+                precision_dict_gin[percentile_q].append(precision)
+                recall_dict_gin[percentile_q].append(recall)
+                F1_dict_gin[percentile_q].append(F1)    
+        
         save_results_TI(AUC_list_gin, AP_list_gin, ntw_name+"_gin"+intrinsic_str)
         save_results_TD(precision_dict_gin, recall_dict_gin, F1_dict_gin, ntw_name+"_gin"+intrinsic_str)
