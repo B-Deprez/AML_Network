@@ -1,0 +1,9 @@
+conda create -n benchmark_AML python=3.10.16 jupyter numpy scipy matplotlib
+conda install networkx
+pip install networkit
+pip install scikit-learn
+conda install pandas
+pip install torch==2.5.1 torchvision==0.20.1 torchaudio==2.5.1 --index-url https://download.pytorch.org/whl/cu121
+pip install pyg_lib torch_scatter torch_sparse torch_cluster torch_spline_conv -f https://data.pyg.org/whl/torch-2.5.0+cu121.html
+pip install torch-geometric==2.6.1
+pip install optuna
