@@ -51,7 +51,19 @@ We have provided a `requirements.txt` file:
 ```bash
 pip install -r requirements.txt
 ```
-Please use the above in a newly created virtual environment to avoid clashing dependencies.
+
+To create a new environment, we advise to use the following steps. This helps avoid dependency issues when loading and running node2vec. 
+```bash
+conda create -n benchmark_AML python=3.10.16 jupyter numpy scipy matplotlib
+conda install networkx
+pip install networkit
+pip install scikit-learn
+conda install pandas
+pip install torch==2.5.1 torchvision==0.20.1 torchaudio==2.5.1 --index-url https://download.pytorch.org/whl/cu121
+pip install pyg_lib torch_scatter torch_sparse torch_cluster torch_spline_conv -f https://data.pyg.org/whl/torch-2.5.0+cu121.html
+pip install torch-geometric==2.6.1
+pip install optuna
+```
 
 ## Citing
 Please cite our paper and/or code as follows:
